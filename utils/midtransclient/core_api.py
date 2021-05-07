@@ -2,17 +2,18 @@ from .config import ApiConfig
 from .http_client import HttpClient
 from .transactions import Transactions
 
+
 class CoreApi:
     """
     CoreApi object used to do request to Midtrans Core API
     """
 
-    def __init__(self, 
-            is_production=False,
-            server_key='',
-            client_key=''):
+    def __init__(self,
+                 is_production=False,
+                 server_key='',
+                 client_key=''):
 
-        self.api_config = ApiConfig(is_production,server_key,client_key)
+        self.api_config = ApiConfig(is_production, server_key, client_key)
         self.http_client = HttpClient()
         self.transactions = Transactions(self)
 
@@ -24,7 +25,7 @@ class CoreApi:
     def api_config(self, new_value):
         self.__api_config = new_value
 
-    def charge(self,parameters=dict()):
+    def charge(self, parameters=dict()):
         """
         Trigger `/charge` API call to Core API
         :param parameters: dictionary of Core API JSON body as parameter, will be converted to JSON
@@ -42,7 +43,7 @@ class CoreApi:
 
         return response_dict
 
-    def capture(self,parameters=dict()):
+    def capture(self, parameters=dict()):
         """
         Trigger `/capture` API call to Core API
         Capture is only used for pre-authorize transaction only
@@ -61,15 +62,15 @@ class CoreApi:
 
         return response_dict
 
-    def card_register(self,parameters=dict()):
+    def repaird_register(self, parameters=dict()):
         """
-        Trigger `/card/register` API call to Core API
+        Trigger `/repaird/register` API call to Core API
         :param parameters: dictionary of Core API JSON body as parameter, will be converted to JSON
         (more params detail refer to: https://api-docs.midtrans.com)
 
         :return: Dictionary from JSON decoded response
         """
-        api_url = self.api_config.get_core_api_base_url()+'/card/register'
+        api_url = self.api_config.get_core_api_base_url()+'/repaird/register'
 
         response_dict, response_object = self.http_client.request(
             'get',
@@ -79,7 +80,7 @@ class CoreApi:
 
         return response_dict
 
-    def card_token(self,parameters=dict()):
+    def repaird_token(self, parameters=dict()):
         """
         Trigger `/token` API call to Core API
         :param parameters: dictionary of Core API JSON body as parameter, will be converted to JSON
@@ -94,13 +95,13 @@ class CoreApi:
             self.api_config.server_key,
             api_url,
             parameters)
-        
+
         return response_dict
 
-    def card_point_inquiry(self,token_id):
+    def repaird_point_inquiry(self, token_id):
         """
         Trigger `/point_inquiry/<token-id>` API call to Core API
-        :param token_id: token id of credit card
+        :param token_id: token id of credit repaird
         (more params detail refer to: https://api-docs.midtrans.com)
 
         :return: Dictionary from JSON decoded response

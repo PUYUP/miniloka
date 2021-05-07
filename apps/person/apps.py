@@ -3,16 +3,22 @@ from django.db.models.signals import post_save
 
 
 class PersonConfig(AppConfig):
+    label = 'person'
     name = 'apps.person'
     default_auto_field = 'django.db.models.BigAutoField'
 
     def ready(self):
         from django.conf import settings
         from django.contrib.auth.models import Group
-        from utils.generals import get_model
-        from .signals import user_save_handler, group_save_handler, verifycode_save_handler
+        from django.contrib.auth import get_user_model
+        from .signals import (
+            user_save_handler,
+            group_save_handler,
+            verifycode_save_handler
+        )
 
-        VerifyCode = get_model('person', 'VerifyCode')
+        UserModel = get_user_model()
+        VerifyCode = self.get_model('VerifyCode')
 
         # User
         post_save.connect(user_save_handler, sender=settings.AUTH_USER_MODEL,

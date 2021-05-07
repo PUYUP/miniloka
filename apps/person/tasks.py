@@ -11,7 +11,7 @@ from celery import shared_task
 
 @shared_task
 def send_verifycode_email(data):
-    logging.info(_("Send VerifyCode email run"))
+    logging.info(_("Send verifyCode email run"))
 
     to = data.get('email', None)
     passcode = data.get('passcode', None)
@@ -57,4 +57,19 @@ def send_verifycode_email(data):
             except BadHeaderError:
                 logging.warning(_("Invalid header found"))
     else:
-        logging.warning(_("Tried to send email to non-existing VerifyCode Code"))
+        logging.warning(
+            _("Tried to send email to non-existing VerifyCode Code"))
+
+
+@shared_task
+def send_verifycode_msisdn(data):
+    logging.info(_("Send verifyCode msisdn run"))
+
+    to = data.get('msisdn', None)
+    passcode = data.get('passcode', None)
+
+    if to and passcode:
+        pass
+    else:
+        logging.warning(
+            _("Tried to send email to non-existing VerifyCode Code"))

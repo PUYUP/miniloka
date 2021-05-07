@@ -67,7 +67,8 @@ def get_model(app_label, model_name):
 
             # `app_config.import_models()` cannot be used here because it
             # would interfere with `apps.populate()`.
-            importlib.import_module('%s.%s' % (app_config.name, MODELS_MODULE_NAME))
+            importlib.import_module('%s.%s' % (
+                app_config.name, MODELS_MODULE_NAME))
 
             # In order to user for case-insensitivity of model_name,
             # look up the model through a private API of the app registry.

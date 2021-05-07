@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.utils.translation import ugettext_lazy as _
 
 from utils.generals import get_model
-from apps.person.forms import UserChangeFormExtend, UserCreationFormExtend
+from .forms import UserChangeFormExtend, UserCreationFormExtend
 
 User = get_model('person', 'User')
 Profile = get_model('person', 'Profile')
@@ -18,7 +18,7 @@ class ProfileInline(admin.StackedInline):
 class UserExtend(UserAdmin):
     form = UserChangeFormExtend
     add_form = UserCreationFormExtend
-    inlines = [ProfileInline,]
+    inlines = [ProfileInline, ]
     list_display = ('username', 'first_name', 'email', 'msisdn', 'is_staff')
     fieldsets = (
         (None, {'fields': ('username', 'password', 'email', 'is_email_verified',
@@ -48,9 +48,10 @@ class UserExtend(UserAdmin):
 class VerifyCodeExtend(admin.ModelAdmin):
     model = VerifyCode
     list_display = ('email', 'msisdn', 'passcode', 'challenge', 'is_verified',
-                    'is_used', 'is_expired', 'token',)
+                    'is_used', 'is_expired', 'token', 'user_agent',)
     list_display_links = ('email', 'msisdn',)
-    readonly_fields = ('passcode', 'token', 'valid_until', 'valid_until_timestamp',)
+    readonly_fields = ('passcode', 'token', 'valid_until',
+                       'valid_until_timestamp',)
     list_filter = ('challenge', 'is_verified',)
 
     def get_readonly_fields(self, request, obj=None):
@@ -61,7 +62,7 @@ class VerifyCodeExtend(admin.ModelAdmin):
                 [field.name for field in self.opts.local_many_to_many]))
         return super().get_readonly_fields(request, obj)
 
-    def __init__(self,*args,**kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
 

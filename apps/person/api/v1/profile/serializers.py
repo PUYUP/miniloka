@@ -1,3 +1,4 @@
+
 import os
 import base64
 
@@ -9,6 +10,7 @@ from django.core.files.base import ContentFile
 from rest_framework import serializers
 from utils.generals import get_model
 
+
 Profile = get_model('person', 'Profile')
 
 
@@ -18,7 +20,8 @@ def handle_upload_profile_picture(instance, file, is_original=False):
         username = instance.user.username
 
         if is_original:
-            instance.picture_original.save('%s_original_%s' % (username, ext), file, save=False)
+            instance.picture_original.save(
+                '%s_original_%s' % (username, ext), file, save=False)
             instance.save(update_fields=['picture_original'])
         else:
             instance.picture.save('%s%s' % (username, ext), file, save=False)
@@ -26,9 +29,10 @@ def handle_upload_profile_picture(instance, file, is_original=False):
 
 
 def base64_to_file(picture_base64):
-    picture_format, picture_imgstr = picture_base64.split(';base64,') 
-    picture_ext = picture_format.split('/')[-1] 
-    picture_file = ContentFile(base64.b64decode(picture_imgstr), name='temp.' + picture_ext)
+    picture_format, picture_imgstr = picture_base64.split(';base64,')
+    picture_ext = picture_format.split('/')[-1]
+    picture_file = ContentFile(base64.b64decode(
+        picture_imgstr), name='temp.' + picture_ext)
     return picture_file
 
 
@@ -75,20 +79,19 @@ class ProfileSerializer(serializers.ModelSerializer):
         if picture_original and isinstance(picture_original, str) and is_base64(picture_original):
             data['picture_original'] = base64_to_file(picture_original)
 
-        data = super().to_internal_value(data)
-
         # user select new picture?
         if picture_has_changed:
             data['picture_has_changed'] = picture_has_changed
 
         # is picture changed?
-        if picture :
+        if picture:
             data['has_picture'] = True
 
         # is picture remove?
         if picture_has_removed:
             data['picture_has_removed'] = True
-        return data
+
+        return super().to_internal_value(data)
 
     @transaction.atomic
     def update(self, instance, validated_data):
@@ -110,11 +113,13 @@ class ProfileSerializer(serializers.ModelSerializer):
 
                 # max size 2.5 MB
                 if fsize > 312500:
-                    raise serializers.ValidationError(_("Maksimal ukuran file 2.5 MB. Ukuran file avatar Anda %d MB" % (fsize/10000)))
+                    raise serializers.ValidationError(
+                        _("Maksimal ukuran file 2.5 MB. Ukuran file avatar Anda %d MB" % (fsize/10000)))
 
                 # only accept JPG, JPEG & PNG
                 if not fname.endswith('.jpg') and not fname.endswith('.jpeg') and not fname.endswith('.png'):
-                    raise serializers.ValidationError(_("File hanya boleh .jpg dan .png"))
+                    raise serializers.ValidationError(
+                        _("File hanya boleh .jpg dan .png"))
 
                 file = request.FILES.get('picture', None)
                 if file is None:
@@ -147,10 +152,11 @@ class ProfileSerializer(serializers.ModelSerializer):
         for field in instance._meta.fields:
             if field.editable == True and not field.primary_key and not field.is_relation:
                 field_from_model.append(field.name)
-        
+
         # non profile fields
         # this time use only from User model
-        non_profile_field = list((set(field_from_serializer) ^ set(field_from_model)))
+        non_profile_field = list(
+            (set(field_from_serializer) ^ set(field_from_model)))
         if len(non_profile_field) > 0:
             # update user instance
             for field in non_profile_field:
@@ -167,7 +173,7 @@ class ProfileSerializer(serializers.ModelSerializer):
                 if old_value != value:
                     update_fields.append(key)
                     setattr(instance, key, value)
-        
+
         if update_fields:
             instance.save(update_fields=update_fields)
         return instance

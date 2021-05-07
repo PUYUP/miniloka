@@ -2,26 +2,22 @@ from django.db import transaction
 from django.views.decorators.cache import never_cache
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import status as response_status, viewsets
-from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.exceptions import NotFound, NotAcceptable
+from rest_framework.exceptions import NotFound
 
 from utils.validators import csrf_protect_drf
 from utils.generals import get_model
-from apps.person.utils.generator import (
-    generate_token_uidb64_with_email,
-    generate_token_uidb64_with_msisdn
-)
 from .serializers import CreateVerifyCodeSerializer, ValidateVerifyCodeSerializer
 
 VerifyCode = get_model('person', 'VerifyCode')
 
 
-@method_decorator(csrf_protect_drf, name='dispatch')
+@method_decorator([ensure_csrf_cookie, csrf_protect_drf], name='dispatch')
 class VerifyCodeApiView(viewsets.ViewSet):
     """
     POST
@@ -32,7 +28,7 @@ class VerifyCodeApiView(viewsets.ViewSet):
         {
             "email": "my@email.com",
             "msisdn": "09284255",
-            "challenge": "VALIDATE_EMAIL"
+            "challenge": "EMAIL_VALIDATION"
         }
 
     Rules:
@@ -88,63 +84,10 @@ class VerifyCodeApiView(viewsets.ViewSet):
     @method_decorator(never_cache)
     @transaction.atomic
     def partial_update(self, request, passcode=None):
-        return Response(_("Endpoint not used"), status=response_status.HTTP_400_BAD_REQUEST)
-
-    # Sub-action validate verifycode
-    @method_decorator(never_cache)
-    @transaction.atomic
-    @action(methods=['post'], detail=True, permission_classes=[AllowAny],
-            url_path='validate', url_name='validate', lookup_field='passcode')
-    def validate(self, request, passcode=None):
-        """
-        POST
-        --------------
-
-        Can't use both email and msisdn
-
-        Format:
-
-            {
-                "email": "string",
-                "msisdn": "string",
-                "challenge": "string"
-            }
-        """
-        email = request.data.get('email', None)
-        msisdn = request.data.get('msisdn', None)
-        challenge = request.data.get('challenge', None)
-
-        # passing from param or url path
-        _passcode = request.data.pop('passcode', passcode)
-
-        try:
-            obj = self._queryset.select_for_update() \
-                .unverified_unused(**request.data, passcode=_passcode)
-        except ObjectDoesNotExist:
-            raise NotAcceptable(
-                detail=_("Kode verifikasi salah atau kedaluwarsa"))
-
-        # Generate token and uidb64 for password recovery
-        if challenge == VerifyCode.ChallengeType.PASSWORD_RECOVERY:
-            password_token = None
-            password_uidb64 = None
-
-            if 'email' in request.data:
-                password_token, password_uidb64 = generate_token_uidb64_with_email(
-                    email)
-
-            if 'msisdn' in request.data:
-                password_token, password_uidb64 = generate_token_uidb64_with_msisdn(
-                    msisdn)
-
-            if password_token and password_uidb64:
-                self._context.update({
-                    'password_token': password_token,
-                    'password_uidb64': password_uidb64
-                })
-
-        serializer = ValidateVerifyCodeSerializer(
-            obj, data=request.data, partial=True, context=self._context)
+        # Instance set to objects None
+        self._context.update({'passcode': passcode})
+        serializer = ValidateVerifyCodeSerializer(VerifyCode.objects.none(), data=request.data, partial=True,
+                                                  context=self._context)
         if serializer.is_valid(raise_exception=True):
             try:
                 serializer.save()

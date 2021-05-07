@@ -41,13 +41,14 @@ X_FRAME_OPTIONS = 'DENY'
 # Django csrf
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/2.2/ref/csrf/
-CSRF_COOKIE_DOMAIN = '.mydomain.com'
+CSRF_COOKIE_DOMAIN = None
+CSRF_COOKIE_SAMESITE = 'None'
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 CSRF_COOKIE_SECURE = True
 CSRF_USE_SESSIONS = False
 CSRF_COOKIE_HTTPONLY = False
 CSRF_TRUSTED_ORIGINS = [
-    '.mydomain.com'
+    'storee-46b6e.web.app'
 ]
 
 
@@ -111,6 +112,6 @@ CACHES = {
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient'
         },
-        'KEY_PREFIX': 'oort_cache'
+        'KEY_PREFIX': 'beefix_cache'
     }
 }

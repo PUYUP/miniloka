@@ -1,23 +1,53 @@
 import uuid
 
 from django.conf import settings
-from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import models, transaction
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.utils.translation import ugettext_lazy as _
+
 from utils.validators import non_python_keyword, identifier_validator
+
+
+class UserManagerExtend(UserManager):
+    @transaction.atomic()
+    def create_user(self, username, password, **extra_fields):
+        field_checker = any(
+            field in settings.USER_VERIFICATION_FIELDS for field in extra_fields.keys())
+
+        if not field_checker:
+            raise ValueError(_("The given {} must be set".format(
+                ' or '.join(settings.USER_VERIFICATION_FIELDS))))
+        return super().create_user(username, password=password, **extra_fields)
 
 
 # Extend User
 # https://docs.djangoproject.com/en/3.1/topics/auth/customizing/#substituting-a-custom-user-model
 class User(AbstractUser):
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    msisdn = models.CharField(blank=True, null=True, max_length=14)
+    msisdn = models.CharField(
+        blank=True,
+        max_length=14,
+        verbose_name=_("Phone number"),
+        error_messages={
+            'unique': _("A user with that msisdn already exists."),
+        },
+    )
+    email = models.EmailField(
+        _('email address'),
+        blank=True,
+        error_messages={
+            'unique': _("A user with that email already exists."),
+        },
+    )
     is_email_verified = models.BooleanField(default=False, null=True)
     is_msisdn_verified = models.BooleanField(default=False, null=True)
 
+    objects = UserManagerExtend()
+
     class Meta(AbstractUser.Meta):
         app_label = 'person'
-    
+
     def clean(self, *args, **kwargs) -> None:
         return super().clean()
 
@@ -25,6 +55,25 @@ class User(AbstractUser):
     def name(self):
         full_name = '{}{}'.format(self.first_name, ' ' + self.last_name)
         return full_name if self.first_name else self.username
+
+    @property
+    def is_customer(self):
+        return self.groups.filter(name__in=["Customer"]).exists()
+
+    @property
+    def is_employee(self):
+        return self.groups.filter(name__in=["Employee"]).exists()
+
+    @property
+    def is_owner(self):
+        return self.groups.filter(name__in=["Owner"]).exists()
+
+    @property
+    def members_of(self):
+        try:
+            return self.members.get(is_current=True)
+        except ObjectDoesNotExist:
+            return None
 
     def mark_email_verified(self):
         self.is_email_verified = True

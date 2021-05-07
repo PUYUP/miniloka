@@ -14,7 +14,7 @@ Group.add_to_class('is_default', models.BooleanField(default=False))
 if not is_model_registered('person', 'User'):
     class User(User):
         class Meta(User.Meta):
-            db_table = 'person_user'
+            pass
 
     __all__.append('User')
 
@@ -23,7 +23,7 @@ if not is_model_registered('person', 'User'):
 if not is_model_registered('person', 'Profile'):
     class Profile(AbstractProfile):
         class Meta(AbstractProfile.Meta):
-            db_table = 'person_profile'
+            pass
 
     __all__.append('Profile')
 
@@ -32,6 +32,6 @@ if not is_model_registered('person', 'Profile'):
 if not is_model_registered('person', 'VerifyCode'):
     class VerifyCode(AbstractVerifyCode):
         class Meta(AbstractVerifyCode.Meta):
-            db_table = 'person_verifycode'
+            pass
 
     __all__.append('VerifyCode')

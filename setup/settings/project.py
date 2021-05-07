@@ -5,25 +5,20 @@ from .base import *
 
 
 # GLOBAL CONFIGURATIONS
-APP_NAME = 'LokaSe'
-PROJECT_URL = 'www.lokase.com'
-PAGINATION_PER_PAGE = 15
+APP_NAME = 'OPSIONAL'
+PROJECT_URL = 'www.opsional.com'
+PAGINATION_PER_PAGE = 4
 LOGIN_WITH_JWT = True
+LOGOUT_REDIRECT_URL = '/'
 # If true in recovery password need make sure account exist
 RECOVERY_PASSWORD_CHECK_ACCOUNT = True
 
 
 # REGISTRATION REQUIREMENTS
-STRICT_EMAIL = True
-STRICT_EMAIL_VERIFIED = False
-STRICT_EMAIL_DUPLICATE = False
-
-STRICT_MSISDN = False
-STRICT_MSISDN_VERIFIED = False
-STRICT_MSISDN_DUPLICATE = False
-
-LOGOUT_REDIRECT_URL = '/'
-LOGIN_URL = '/person/login/'
+USER_EMAIL_FIELD = 'email'
+USER_MSISDN_FIELD = 'msisdn'
+USER_REQUIRED_VERIFICATION = True
+USER_VERIFICATION_FIELDS = ['email', 'msisdn']
 
 
 # Application definition
@@ -31,8 +26,11 @@ PROJECT_APPS = [
     # 'channels',
     'corsheaders',
     'rest_framework',
+    'django_filters',
+    'taggit',
+    'simple_history',
     'apps.person',
-    'apps.repair',
+    'apps.servo',
 ]
 INSTALLED_APPS = INSTALLED_APPS + PROJECT_APPS
 
@@ -40,6 +38,7 @@ INSTALLED_APPS = INSTALLED_APPS + PROJECT_APPS
 # MIDDLEWARES
 PROJECT_MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    'simple_history.middleware.HistoryRequestMiddleware',
 ]
 MIDDLEWARE = PROJECT_MIDDLEWARE + MIDDLEWARE
 
@@ -63,7 +62,7 @@ CACHES = {
         'OPTIONS': {
             'server_max_value_length': 1024 * 1024 * 2,
         },
-        'KEY_PREFIX': 'oort_cache'
+        'KEY_PREFIX': 'beefix_cache'
     }
 }
 
@@ -86,23 +85,13 @@ SESSION_SAVE_EVERY_REQUEST = False
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 
 
-# Static files (CSS, JavaScript, Images)
-# ------------------------------------------------------------------------------
-# https://docs.djangoproject.com/en/2.2/howto/static-files/
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(PROJECT_PATH, 'media/')
-
-STATIC_URL = '/static/'
-STATICFILES_DIRS = (
-    os.path.join(PROJECT_PATH, 'static/'),
-)
-
-
 # Django Simple JWT
 # ------------------------------------------------------------------------------
 # https://github.com/davesque/django-rest-framework-simplejwt
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=365),
+    'USER_ID_FIELD': 'uuid',
+    'USER_ID_CLAIM': 'user_uuid',
 }
 
 
@@ -122,6 +111,9 @@ REST_FRAMEWORK = {
     # or allow read-only access for unauthenticated users.
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
@@ -152,3 +144,8 @@ EMAIL_HOST_PASSWORD = 'SG.pNfRRMD0RciUa9M66SnNvw.6hiRvqGvA-OMg-F4QL0DgPqbO6ykVF1
 EMAIL_PORT = 587
 EMAIL_USE_TLS = False
 EMAIL_USE_SSL = False
+
+
+# Django-taggit
+# https: // django-taggit.readthedocs.io/en/latest/getting_started.html
+TAGGIT_CASE_INSENSITIVE = True

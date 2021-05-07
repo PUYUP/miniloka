@@ -3,24 +3,22 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
 from django.utils.decorators import method_decorator
-from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import (
     ObjectDoesNotExist,
-    ValidationError,
-    MultipleObjectsReturned
+    MultipleObjectsReturned,
+    ValidationError as DjangoValidationError
 )
 from django.views.decorators.cache import never_cache
 from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.core.validators import validate_email
-from django.utils.http import urlsafe_base64_decode
-from django.contrib.auth.tokens import default_token_generator
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 # THIRD PARTY
 from rest_framework import status as response_status, viewsets
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from rest_framework.exceptions import NotFound, NotAcceptable, ValidationError as DRFValidationError
+from rest_framework.exceptions import NotFound, NotAcceptable, ValidationError
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.parsers import JSONParser, MultiPartParser
 
@@ -30,7 +28,12 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 # SERIALIZERS
-from .serializers import BaseUserSerializer, CreateUserSerializer, UpdateUserSerializer
+from .serializers import (
+    BaseUserSerializer,
+    CreateUserSerializer,
+    UpdateUserSerializer,
+    RetrieveUserSerializer
+)
 from ..profile.serializers import ProfileSerializer
 
 # GET MODELS FROM GLOBAL UTILS
@@ -40,8 +43,9 @@ from utils.validators import csrf_protect_drf
 
 from apps.person.utils.permissions import IsCurrentUserOrReject
 from apps.person.utils.auth import validate_username
+from apps.person.utils.password import ChangePassword, PasswordRecovery
 
-User = get_user_model()
+UserModel = get_user_model()
 Profile = get_model('person', 'Profile')
 VerifyCode = get_model('person', 'VerifyCode')
 
@@ -49,7 +53,7 @@ VerifyCode = get_model('person', 'VerifyCode')
 _PAGINATOR = LimitOffsetPagination()
 
 
-@method_decorator(csrf_protect_drf, name='dispatch')
+@method_decorator([ensure_csrf_cookie, csrf_protect_drf], name='dispatch')
 class UserApiView(viewsets.ViewSet):
     """
     POST
@@ -57,18 +61,25 @@ class UserApiView(viewsets.ViewSet):
         If :email provided :msisdn not required
         If :email NOT provide :msisdn required
 
+        If :groups not define will used Customer as default groups
+
         {
             "password": "string with special character",
             "username": "string",
             "email": "string email",
-            "msisdn": "string number"
+            "msisdn": "string number",
+            "groups": "string",                             [optional]
+            "verification": {
+                "passcode": "123456",
+                "challenge": "email_validation",
+            }
         }
     """
 
     def __init__(self, **kwargs):
         self._uuid = None
-        self._obj = None
-        self._objs = User.objects.none()
+        self._instance = None
+        self._instances = UserModel.objects.none()
         self._context = {}
         super().__init__(**kwargs)
 
@@ -96,52 +107,40 @@ class UserApiView(viewsets.ViewSet):
     def dispatch(self, request, *args, **kwargs):
         # Must call first because will used everywhere
         self._uuid = kwargs.get('uuid')
-        self._objs = self._get_objs()
+        self._instances = self._get_instances()
         self._context = {'request': request}
         return super().dispatch(request, *args, **kwargs)
 
-    def _get_objs(self):
+    def _get_instances(self):
         """General query affected for entire object"""
-        query = User.objects.prefetch_related('profile') \
+        return UserModel.objects.prefetch_related('profile') \
             .select_related('profile')
-        return query
 
-    def _get_obj(self):
+    def _get_instance(self):
         """Return single object"""
         try:
-            obj = self._objs.get(uuid=self._uuid)
+            return self._instances.get(uuid=self._uuid)
         except ObjectDoesNotExist:
             raise NotFound()
-        return obj
 
-    def _get_obj_for_update(self):
+    def _get_instance_for_update(self):
         """Return single object for update purpose"""
         try:
-            obj = self._objs.select_for_update() \
+            instance = self._instances.select_for_update() \
                 .get(uuid=self._uuid)
         except ObjectDoesNotExist:
             raise NotFound()
-        return obj
-
-    # Get verifycode object
-    def _get_verifycode(self, challenge=None, email=None, msisdn=None, token=None):
-        try:
-            obj = VerifyCode.objects.select_for_update() \
-                .verified_unused(email=email, msisdn=msisdn, token=token,
-                                 challenge=challenge)
-            return obj
-        except ObjectDoesNotExist:
-            raise NotFound(detail=_("Kode verifikasi tidak ditemukan"))
+        return instance
 
     # All Users
     def list(self, request, format=None):
         keyword = request.query_params.get('keyword')
-        objs = self._objs
+        instances = self._instances
         if keyword:
-            objs = objs.filter(Q(username__icontains=keyword)
-                               | Q(first_name__icontains=keyword))
+            instances = instances.filter(Q(username__icontains=keyword)
+                                         | Q(first_name__icontains=keyword))
 
-        paginator = _PAGINATOR.paginate_queryset(objs, request)
+        paginator = _PAGINATOR.paginate_queryset(instances, request)
         serializer = BaseUserSerializer(paginator, many=True, context=self._context,
                                         fields=('uuid', 'username', 'url', 'profile',))
         results = build_result_pagination(self, _PAGINATOR, serializer)
@@ -149,15 +148,15 @@ class UserApiView(viewsets.ViewSet):
 
     # Single User
     def retrieve(self, request, uuid=None, format=None):
-        obj = self._get_obj()
+        instance = self._get_instance()
 
         # limit fields when other user see the user
         fields = ('__all__')
         if str(request.user.uuid) != uuid:
             fields = ('uuid', 'username', 'url', 'profile', 'first_name',)
 
-        serializer = BaseUserSerializer(
-            obj, many=False, context=self._context, fields=fields)
+        serializer = RetrieveUserSerializer(instance, many=False, context=self._context,
+                                            fields=fields)
         return Response(serializer.data, status=response_status.HTTP_200_OK)
 
     # Register User
@@ -170,23 +169,39 @@ class UserApiView(viewsets.ViewSet):
             raise NotAcceptable(
                 detail=_("You has loggedin as {}".format(user.username)))
 
-        serializer = CreateUserSerializer(
-            data=request.data, context=self._context)
+        serializer = CreateUserSerializer(data=request.data,
+                                          context=self._context)
         if serializer.is_valid(raise_exception=True):
+            error_status = response_status.HTTP_406_NOT_ACCEPTABLE
+            error_code = None
+            error_content = None
+
             try:
                 serializer.save()
             except ValidationError as e:
-                return Response({'detail': e.message}, status=response_status.HTTP_406_NOT_ACCEPTABLE)
-            return Response(serializer.data, status=response_status.HTTP_201_CREATED)
+                error_content = e
+                error_code = getattr(e, 'code', None)
+                if error_code == 'verification_failure':
+                    error_status = response_status.HTTP_401_UNAUTHORIZED
+            except ValueError as e:
+                error_content = str(e)
+
+            if error_content:
+                return Response({'detail': error_content}, status=error_status)
+
+            _serializer = RetrieveUserSerializer(serializer.instance, many=False,
+                                                 context=self._context)
+            return Response(_serializer.data, status=response_status.HTTP_201_CREATED)
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)
 
     # Update basic user data
     @method_decorator(never_cache)
     @transaction.atomic
     def partial_update(self, request, uuid=None, format=None):
-        obj = self._get_obj_for_update()
-        serializer = UpdateUserSerializer(
-            obj, data=request.data, partial=True, context=self._context)
+        instance = self._get_instance_for_update()
+        serializer = UpdateUserSerializer(instance, data=request.data,
+                                          partial=True, context=self._context)
+
         if serializer.is_valid(raise_exception=True):
             serializer.save()
             return Response(serializer.data, status=response_status.HTTP_200_OK)
@@ -203,8 +218,9 @@ class UserApiView(viewsets.ViewSet):
             return Response(status=response_status.HTTP_401_UNAUTHORIZED)
 
         self._uuid = user.uuid
-        obj = self._get_obj()
-        serializer = BaseUserSerializer(obj, many=False, context=self._context)
+        instance = self._get_instance()
+        serializer = BaseUserSerializer(instance, many=False,
+                                        context=self._context)
         return Response(serializer.data, status=response_status.HTTP_200_OK)
 
     # Sub-action logout!
@@ -248,7 +264,7 @@ class UserApiView(viewsets.ViewSet):
             raise NotAcceptable(detail=_(" ".join(e.messages)))
 
         try:
-            User.objects.get(email=email, is_email_verified=True)
+            UserModel.objects.get(email=email, is_email_verified=True)
             raise NotAcceptable(_("Email `{email}` sudah terdaftar."
                                   " Jika ini milik Anda hubungi kami.".format(email=email)))
         except MultipleObjectsReturned:
@@ -289,7 +305,7 @@ class UserApiView(viewsets.ViewSet):
             raise NotFound(_("Masukkan MSISDN"))
 
         try:
-            User.objects.get(msisdn=msisdn, is_msisdn_verified=True)
+            UserModel.objects.get(msisdn=msisdn, is_msisdn_verified=True)
             raise NotAcceptable(_("MSISDN `{msisdn}` sudah digunakan."
                                   " Jika ini milik Anda hubungi kami.".format(msisdn=msisdn)))
         except MultipleObjectsReturned:
@@ -331,9 +347,9 @@ class UserApiView(viewsets.ViewSet):
             raise NotFound(_("Masukkan email, nama pengguna atau MSISDN"))
 
         try:
-            user = User.objects.get(Q(username=credential)
-                                    | Q(email=credential) & Q(is_email_verified=True)
-                                    | Q(msisdn=credential) & Q(is_msisdn_verified=True))
+            user = UserModel.objects.get(Q(username=credential)
+                                         | Q(email=credential) & Q(is_email_verified=True)
+                                         | Q(msisdn=credential) & Q(is_msisdn_verified=True))
 
             return Response(
                 {
@@ -383,7 +399,7 @@ class UserApiView(viewsets.ViewSet):
         except ValidationError as e:
             raise NotAcceptable(detail=_(" ".join(e.messages)))
 
-        if User.objects.filter(username=username).exists():
+        if UserModel.objects.filter(username=username).exists():
             raise NotAcceptable(detail=_("Nama pengguna `{username}` "
                                          "sudah digunakan.".format(username=username)))
         return Response({'detail': _("Nama pengguna tersedia!")},
@@ -431,6 +447,7 @@ class UserApiView(viewsets.ViewSet):
             {
                 "verifycode_email": "string",
                 "verifycode_msisdn": "string",
+                "verifycode_passcode": "string",
                 "new_password": "string",
                 "retype_password": "string",
                 "password_token": "string",
@@ -439,53 +456,47 @@ class UserApiView(viewsets.ViewSet):
 
         :token captured from verifycode validation
         """
+
+        VERIFYCODE_EMAIL = 'email'
+        VERIFYCODE_EMAIL_PARAM = 'verifycode_{}'.format(VERIFYCODE_EMAIL)
+        VERIFYCODE_MSISDN = 'msisdn'
+        VERIFYCODE_MSISDN_PARAM = 'verifycode_{}'.format(VERIFYCODE_MSISDN)
+
+        if VERIFYCODE_EMAIL_PARAM in request.data and VERIFYCODE_MSISDN_PARAM in request.data:
+            raise ValidationError(
+                detail=_("Can't use both email and msisdn"))
+
+        verifycode_value = request.data.get(
+            VERIFYCODE_EMAIL_PARAM) or request.data.get(VERIFYCODE_MSISDN_PARAM)
+        verifycode_field = next((key for key, value in request.data.items()
+                                 if value == verifycode_value), None)
+
+        if verifycode_field is None:
+            raise ValidationError(
+                detail=_("verifycode_msisdn or verifycode_email required"))
+
         new_password = request.data.get('new_password')
         retype_password = request.data.get('retype_password')
-        password_uidb64 = request.data.get('password_uidb64')
-        password_token = request.data.get('password_token')
+        uidb64 = request.data.get('password_uidb64')
+        token = request.data.get('password_token')
+        passcode = request.data.get('verifycode_passcode')
 
-        # check password confirmation
-        if new_password and retype_password:
-            if new_password != retype_password:
-                raise NotAcceptable(detail=_("Password tidak sama"))
-        else:
-            raise NotAcceptable(detail=_("Password tidak boleh kosong"))
+        # Init recovery function
+        # If all passed will return None
+        recover = PasswordRecovery(new_password, retype_password,
+                                   token, uidb64)
 
-        # validate password
-        try:
-            validate_password(retype_password)
-        except ValidationError as e:
-            raise NotAcceptable(detail=' '.join(e.messages))
-
-        # check password recovery valid or not
-        uid = urlsafe_base64_decode(password_uidb64).decode()
-
-        try:
-            user = User._default_manager.get(pk=uid)
-        except ObjectDoesNotExist:
-            raise NotAcceptable(detail=_("Akun tidak ditemukan"))
-
-        # check recovery token
-        isvalid = default_token_generator.check_token(user, password_token)
-        if not isvalid:
-            raise NotAcceptable(detail=_("Token invalid"))
-
-        # Check verifycode is valid
+        # Check and validate verifycode
         verifycode_token = request.session.get(
             'verifycode_token') if request else None
-        verifycode_email = request.data.get('verifycode_email')
-        verifycode_msisdn = request.data.get('verifycode_msisdn')
-        verifycode_obj = self._get_verifycode(
-            challenge=VerifyCode.ChallengeType.PASSWORD_RECOVERY,
-            token=verifycode_token, email=verifycode_email,
-            msisdn=verifycode_msisdn)
+        recover.get_verifycode(verifycode_token, verifycode_field.replace('verifycode_', ''),
+                               verifycode_value, passcode)
 
-        # mark verifycode used
-        verifycode_obj.mark_used()
-
-        # set password
-        user.set_password(retype_password)
-        user.save()
+        # Finally, set the password
+        try:
+            recover.save_password()
+        except DjangoValidationError as e:
+            raise ValidationError(detail=' '.join(e))
 
         return Response({'detail': _("Password berhasil diperbarui. "
                                      "Silahkan masuk dengan password baru")},
@@ -514,30 +525,14 @@ class UserApiView(viewsets.ViewSet):
         new_password = request.data.get('new_password')
         retype_password = request.data.get('retype_password')
 
-        # check current password
-        if not user.check_password(old_password):
-            raise DRFValidationError(detail=_("Password lama salah"))
+        changer = ChangePassword(user, old_password, new_password,
+                                 retype_password)
 
-        # check password confirmation
-        if new_password and retype_password:
-            if new_password != retype_password:
-                raise DRFValidationError(detail=_("Password tidak sama"))
-        else:
-            raise DRFValidationError(
-                detail=_("Password baru tidak boleh kosong"))
-
-        if old_password == retype_password:
-            raise DRFValidationError(detail=_("Password lama dan baru sama"))
-
-        # validate password
+        # Finally, set the password
         try:
-            validate_password(retype_password)
-        except ValidationError as e:
-            raise DRFValidationError(detail=' '.join(e.messages))
-
-        # set password
-        user.set_password(retype_password)
-        user.save()
+            changer.save_password()
+        except DjangoValidationError as e:
+            raise ValidationError(detail=' '.join(e))
 
         return Response({'detail': _("Password berhasil diperbarui. "
                                      "Silahkan masuk dengan password baru")},
@@ -548,18 +543,25 @@ class TokenObtainPairSerializerExtend(TokenObtainPairSerializer):
     def validate(self, attrs):
         context = {}
         data = super().validate(attrs)
+        serializer = BaseUserSerializer(self.user, many=False,
+                                        context=self.context)
+        roles = {
+            'is_owner': self.user.is_owner,
+            'is_employee': self.user.is_employee,
+            'is_customer': self.user.is_customer,
+        }
 
-        serializer = BaseUserSerializer(
-            self.user, many=False, context=self.context)
+        user = {'roles': roles}
+        user.update(serializer.data)
 
         context.update({
             'token': data,
-            'user': serializer.data
+            'user': user
         })
         return context
 
 
-@method_decorator(csrf_protect_drf, name='dispatch')
+@method_decorator([ensure_csrf_cookie, csrf_protect_drf], name='dispatch')
 class TokenObtainPairViewExtend(TokenObtainPairView):
     serializer_class = TokenObtainPairSerializerExtend
 
@@ -572,6 +574,8 @@ class TokenObtainPairViewExtend(TokenObtainPairView):
             serializer.is_valid(raise_exception=True)
         except TokenError as e:
             raise InvalidToken(e.args[0])
+        except ValueError as e:
+            raise ValidationError({'detail': str(e)})
 
         # Make user logged-in
         if settings.LOGIN_WITH_JWT:

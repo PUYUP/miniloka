@@ -6,12 +6,12 @@ from django.contrib.auth import get_user_model
 from channels.db import database_sync_to_async
 from channels.auth import AuthMiddlewareStack
 
-User = get_user_model()
+UserModel = get_user_model()
 
 
 @database_sync_to_async
 def get_user(token):
-    user = User.objects.get(uuid=token)
+    user = UserModel.objects.get(uuid=token)
 
     if user:
         return user
@@ -31,6 +31,7 @@ class TokenAuthMiddlewareInstance:
     Yeah, this is black magic:
     https://github.com/django/channels/issues/1399
     """
+
     def __init__(self, scope, middleware):
         self.middleware = middleware
         self.scope = dict(scope)
@@ -53,4 +54,5 @@ class TokenAuthMiddlewareInstance:
         return await self.inner(self.scope, receive, send)
 
 
-TokenAuthMiddlewareStack = lambda inner: TokenAuthMiddleware(AuthMiddlewareStack(inner))
+def TokenAuthMiddlewareStack(inner): return TokenAuthMiddleware(
+    AuthMiddlewareStack(inner))

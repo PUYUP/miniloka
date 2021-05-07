@@ -19,7 +19,7 @@ identifier_validator = RegexValidator(
 )
 
 
-validate_msisdn = RegexValidator(
+msisdn_validation = RegexValidator(
     regex=_lazy_re_compile(r'\+?([ -]?\d+)+|\(\d+\)([ -]\d+)'),
     message=_("MSISDN format invalid.")
 )
@@ -74,7 +74,7 @@ class CleanValidateMixin(serializers.ModelSerializer):
     def validate(self, attrs):
         # exclude all field with type list or dict
         attr = {
-            x: attrs.get(x) for x in list(attrs) 
+            x: attrs.get(x) for x in list(attrs)
             if not isinstance(attrs.get(x), list) and not isinstance(attrs.get(x), dict)
         }
 
@@ -86,8 +86,9 @@ class CleanValidateMixin(serializers.ModelSerializer):
         else:
             if isinstance(self.instance, QuerySet):
                 uuid = attrs.get('uuid')
-                instance = next((x for x in self.instance if x.uuid == uuid), None)
-                
+                instance = next(
+                    (x for x in self.instance if x.uuid == uuid), None)
+
                 if instance is not None:
                     for x in attr:
                         setattr(instance, x, attr.get(x))
@@ -102,7 +103,7 @@ class CleanValidateMixin(serializers.ModelSerializer):
 
 class CsrfViewMiddlewareAPI(CsrfViewMiddleware):
     def _reject(self, request, reason):
-        return JsonResponse({'detail': reason}, status=406)
+        return JsonResponse({'detail': reason}, status=403)
 
 
 csrf_protect_drf = decorator_from_middleware(CsrfViewMiddlewareAPI)

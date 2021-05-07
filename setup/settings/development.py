@@ -6,6 +6,19 @@ from corsheaders.defaults import default_headers
 DEBUG = True
 DEBUG_PROPAGATE_EXCEPTIONS = False
 
+
+# Static files (CSS, JavaScript, Images)
+# ------------------------------------------------------------------------------
+# https://docs.djangoproject.com/en/2.2/howto/static-files/
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(PROJECT_PATH, 'media/')
+
+STATIC_URL = '/static/'
+STATICFILES_DIRS = (
+    os.path.join(PROJECT_PATH, 'static/'),
+)
+
+
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
 DATABASES = {
@@ -42,7 +55,7 @@ CSRF_COOKIE_SECURE = False
 CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_TRUSTED_ORIGINS = [
     'localhost:8100',
-    # 'localhost:3000',
+    'localhost:8101',
     # '10.0.2.2:8081',
 ]
 
@@ -54,7 +67,7 @@ CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:8100',
-    # 'http://localhost:3000',
+    'http://localhost:8101',
     # 'http://10.0.2.2:8081',
 ]
 
@@ -64,6 +77,7 @@ CORS_ALLOW_HEADERS = list(default_headers) + [
 ]
 
 
+# Django Channels
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels.layers.InMemoryChannelLayer"
