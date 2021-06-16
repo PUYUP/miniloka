@@ -22,7 +22,7 @@ USER_VERIFICATION_FIELDS = ['email', 'msisdn']
 
 # Application definition
 PROJECT_APPS = [
-    # 'channels',
+    'channels',
     'corsheaders',
     'rest_framework',
     'django_filters',
