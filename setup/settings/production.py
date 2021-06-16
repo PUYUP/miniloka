@@ -7,13 +7,23 @@ from sentry_sdk.integrations.django import DjangoIntegration
 from corsheaders.defaults import default_headers
 
 DEBUG = False
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]']
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '[::1]',
+    '123.100.226.161',
+    'api.miniloka.com'
+]
 
 
 # SENTRY
 sentry_sdk.init(
-    dsn="https://03b90e71d21646688b3c26fc13c9de50@o400235.ingest.sentry.io/5570476",
+    dsn="https://838662265460466ead59e184aac8cae8@o400235.ingest.sentry.io/5819932",
     integrations=[DjangoIntegration()],
+
+    # Set traces_sample_rate to 1.0 to capture 100%
+    # of transactions for performance monitoring.
+    # We recommend adjusting this value in production.
     traces_sample_rate=1.0,
 
     # If you wish to associate users to errors (assuming you are using
@@ -41,14 +51,13 @@ X_FRAME_OPTIONS = 'DENY'
 # Django csrf
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/2.2/ref/csrf/
-CSRF_COOKIE_DOMAIN = None
-CSRF_COOKIE_SAMESITE = None
+CSRF_COOKIE_DOMAIN = '.miniloka.com'
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
 CSRF_COOKIE_SECURE = True
 CSRF_USE_SESSIONS = False
 CSRF_COOKIE_HTTPONLY = False
 CSRF_TRUSTED_ORIGINS = [
-    'storee-46b6e.web.app'
+    '.miniloka.com'
 ]
 
 
@@ -60,7 +69,6 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     'http://localhost',
     'http://localhost:8100',
-    'https://app.mydomain.com',
 ]
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
@@ -80,8 +88,8 @@ MEDIA_ROOT = os.path.join(PROJECT_PATH, 'media')
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'mydomain_db',
-        'USER': 'mydomain_db_user',
+        'NAME': 'miniloka_db',
+        'USER': 'miniloka_db_user',
         'PASSWORD': '6+Zwx37G3)EhSx',
         'HOST': HOST,   # Or an IP Address that your DB is hosted on
         'PORT': '',
