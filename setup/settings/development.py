@@ -24,7 +24,7 @@ STATICFILES_DIRS = (
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'django-beefix',
+        'NAME': 'django-miniloka',
         'USER': 'root',
         'PASSWORD': '123456',
         'HOST': HOST,   # Or an IP Address that your DB is hosted on
@@ -39,24 +39,32 @@ DATABASES = {
 # Django Sessions
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/2.2/ref/settings/
-SESSION_COOKIE_HTTPONLY = False
 SESSION_COOKIE_SECURE = False
-SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_SAVE_EVERY_REQUEST = False
+SESSION_COOKIE_HTTPONLY = False
+
+SECURE_REFERRER_POLICY = 'same-origin'
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_SSL_REDIRECT = False
+SECURE_HSTS_SECONDS = 5
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+X_FRAME_OPTIONS = 'DENY'
 
 
 # Django csrf
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/2.2/ref/csrf/
+CSRF_COOKIE_DOMAIN = None
+CSRF_COOKIE_SAMESITE = None
 CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
+CSRF_COOKIE_SECURE = False
 CSRF_USE_SESSIONS = False
 CSRF_COOKIE_HTTPONLY = False
-CSRF_COOKIE_SECURE = False
-CSRF_COOKIE_SAMESITE = 'Lax'
 CSRF_TRUSTED_ORIGINS = [
     'localhost:8100',
     'localhost:8101',
-    # '10.0.2.2:8081',
+    '10.0.2.2:8101',
 ]
 
 
@@ -68,7 +76,7 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:8100',
     'http://localhost:8101',
-    # 'http://10.0.2.2:8081',
+    'http://10.0.2.2:8101',
 ]
 
 CORS_ALLOW_HEADERS = list(default_headers) + [

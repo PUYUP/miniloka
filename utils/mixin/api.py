@@ -50,14 +50,14 @@ class ExcludeFieldsModelSerializer(serializers.ModelSerializer):
 
 class WritetableFieldPutMethod(serializers.ModelSerializer):
     """
-    Sometime PUT method need field is writetable but we don't want
+    Sometime PUT method inquiry field is writetable but we don't want
     break entire function.
     """
 
     def __init__(self, *args, **kwargs):
         # Don't pass the 'fields' arg up to the superclass
         kwargs.pop('fields', None)
-        
+
         # Instantiate the superclass normally
         super(WritetableFieldPutMethod, self).__init__(*args, **kwargs)
 
@@ -89,7 +89,8 @@ class ListSerializerUpdateMappingField(serializers.ListSerializer):
     def update(self, instance, validated_data):
         # Maps for uuid->instance and uuid->data item.
         obj_mapping = {obj.uuid: obj for obj in instance}
-        data_mapping = {item.get('uuid', index): item for index, item in enumerate(validated_data)}
+        data_mapping = {
+            item.get('uuid', index): item for index, item in enumerate(validated_data)}
 
         # Perform creations and updates.
         ret = []
@@ -123,6 +124,7 @@ class CreatableSlugRelatedField(serializers.SlugRelatedField):
             instance = model.objects.filter(**{self.slug_field: data}).first()
             return instance
         except ObjectDoesNotExist:
-            self.fail('does_not_exist', slug_name=self.slug_field, value=smart_str(data))
+            self.fail('does_not_exist', slug_name=self.slug_field,
+                      value=smart_str(data))
         except (TypeError, ValueError):
             self.fail('invalid')

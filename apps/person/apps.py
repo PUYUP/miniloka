@@ -10,14 +10,12 @@ class PersonConfig(AppConfig):
     def ready(self):
         from django.conf import settings
         from django.contrib.auth.models import Group
-        from django.contrib.auth import get_user_model
         from .signals import (
             user_save_handler,
             group_save_handler,
             verifycode_save_handler
         )
 
-        UserModel = get_user_model()
         VerifyCode = self.get_model('VerifyCode')
 
         # User

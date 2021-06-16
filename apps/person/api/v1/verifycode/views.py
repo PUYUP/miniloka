@@ -2,7 +2,6 @@ from django.db import transaction
 from django.views.decorators.cache import never_cache
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import ensure_csrf_cookie
 from django.utils.translation import ugettext_lazy as _
 
 from rest_framework import status as response_status, viewsets
@@ -12,12 +11,15 @@ from rest_framework.exceptions import NotFound
 
 from utils.validators import csrf_protect_drf
 from utils.generals import get_model
-from .serializers import CreateVerifyCodeSerializer, ValidateVerifyCodeSerializer
+from .serializers import (
+    CreateVerifyCodeSerializer,
+    RetrieveVerifyCodeSerialzer,
+    ValidateVerifyCodeSerializer
+)
 
 VerifyCode = get_model('person', 'VerifyCode')
 
 
-@method_decorator([ensure_csrf_cookie, csrf_protect_drf], name='dispatch')
 class VerifyCodeApiView(viewsets.ViewSet):
     """
     POST
@@ -29,6 +31,18 @@ class VerifyCodeApiView(viewsets.ViewSet):
             "email": "my@email.com",
             "msisdn": "09284255",
             "challenge": "EMAIL_VALIDATION"
+        }
+
+    PATCH
+    --------------
+
+    Param:
+
+         {
+            "email": "my@email.com",
+            "msisdn": "09284255",
+            "challenge": "EMAIL_VALIDATION",
+            "token": "string"
         }
 
     Rules:
@@ -70,15 +84,17 @@ class VerifyCodeApiView(viewsets.ViewSet):
     @method_decorator(never_cache)
     @transaction.atomic
     def create(self, request, format=None):
-        serializer = CreateVerifyCodeSerializer(
-            data=request.data, context=self._context)
+        serializer = CreateVerifyCodeSerializer(data=request.data,
+                                                context=self._context)
         if serializer.is_valid(raise_exception=True):
             try:
                 serializer.save()
             except ValidationError as e:
                 return Response({'detail': _(" ".join(e.messages))}, status=response_status.HTTP_406_NOT_ACCEPTABLE)
 
-            return Response(serializer.data, status=response_status.HTTP_201_CREATED)
+            _serializer = RetrieveVerifyCodeSerialzer(
+                serializer.instance, context=self._context, many=False)
+            return Response(_serializer.data, status=response_status.HTTP_201_CREATED)
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)
 
     @method_decorator(never_cache)
@@ -86,7 +102,7 @@ class VerifyCodeApiView(viewsets.ViewSet):
     def partial_update(self, request, passcode=None):
         # Instance set to objects None
         self._context.update({'passcode': passcode})
-        serializer = ValidateVerifyCodeSerializer(VerifyCode.objects.none(), data=request.data, partial=True,
+        serializer = ValidateVerifyCodeSerializer(VerifyCode.objects.none(), data=request.data, partial=False,
                                                   context=self._context)
         if serializer.is_valid(raise_exception=True):
             try:
@@ -94,5 +110,7 @@ class VerifyCodeApiView(viewsets.ViewSet):
             except ValidationError as e:
                 return Response({'detail': _(" ".join(e.messages))}, status=response_status.HTTP_406_NOT_ACCEPTABLE)
 
-            return Response(serializer.data, status=response_status.HTTP_200_OK)
+            _serializer = RetrieveVerifyCodeSerialzer(
+                serializer.instance, context=self._context, many=False)
+            return Response(_serializer.data, status=response_status.HTTP_201_CREATED)
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)

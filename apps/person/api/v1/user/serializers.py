@@ -3,7 +3,6 @@ from datetime import datetime
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
 from django.db import transaction, IntegrityError
-from django.db.models import Q
 from django.contrib.auth import get_user_model
 from django.utils.translation import ugettext_lazy as _
 from django.utils.text import slugify
@@ -73,15 +72,13 @@ class BaseUserSerializer(DynamicFields, serializers.ModelSerializer):
     name = serializers.CharField(read_only=True)
     profile = ProfileSerializer(many=False, read_only=True)
 
-    # email and msisdn need verification
-    # format: {"passcode": "123456", "challenge": "email_validation"}
-    verification = serializers.DictField(write_only=True, required=True,
-                                         child=serializers.CharField())
+    # email and msisdn inquiry verification
+    # example: {"passcode": "123456", "token": "1ufufa", "challenge": "email_validation"}
+    verification = serializers.JSONField(write_only=True, required=True)
 
     class Meta:
         model = User
-        exclude = ('id', 'user_permissions', 'date_joined',
-                   'is_superuser', 'last_login', 'is_staff',)
+        fields = '__all__'
         extra_kwargs = {
             'password': {
                 'write_only': True,
@@ -114,50 +111,42 @@ class BaseUserSerializer(DynamicFields, serializers.ModelSerializer):
         if not settings.USER_REQUIRED_VERIFICATION:
             self.fields.pop('verification', None)
 
-        self._verifycode_obj = None
+        self._verifycode_instance = None
         self._verify_field = None
         self._verify_value = None
 
     def _run_verification(self, verification):
-        """
-        Before register user must validate
-        email or msisdn
-        this function will check that
-        """
-
-        request = self.context.get('request')
+        """ Before account created validate email or msisdn """
         verify_field_value = {self._verify_field: self._verify_value}
-        token = request.session.get('verifycode_token') if request else None
 
         try:
-            self._verifycode_obj = VerifyCode.objects.select_for_update() \
-                .verified_unused(token=token, **verification, **verify_field_value)
+            self._verifycode_instance = VerifyCode.objects.select_for_update() \
+                .verified_unused(**verification, **verify_field_value)
         except ObjectDoesNotExist:
             raise CustomExcpetion({'verification': _("{} belum diverifikasi".format(self._verify_field.upper()))},
                                   status_code=status.HTTP_401_UNAUTHORIZED)
 
-    def get_extra_kwargs(self):
-        kwargs = super().get_extra_kwargs()
+    def _mark_verifycode_used(self, instance):
+        if self._verifycode_instance:
+            self._verifycode_instance.mark_used()
 
-        # If one of email or msisdn exists
-        # make other not required
-        if hasattr(self, 'initial_data'):
-            if EMAIL_FIELD in self.initial_data:
-                kwargs[MSISDN_FIELD]['required'] = False
-            elif MSISDN_FIELD in self.initial_data:
-                kwargs[EMAIL_FIELD]['required'] = False
-        return kwargs
+            # mark field verified
+            field_model = 'is_{}_verified'.format(self._verify_field)
+
+            setattr(instance, field_model, True)
+            instance.save(update_fields=[field_model])
 
     def validate(self, attrs):
         self._verify_value = attrs.get('email') or attrs.get('msisdn')
         self._verify_field = next((key for key, value in attrs.items()
                                    if value == self._verify_value), None)
 
-        verification = attrs.pop('verification', {}) \
-            or self.initial_data.pop('verification', {})
-
+        # verification required!
         if (self._verify_field and self._verify_value) \
                 and settings.USER_REQUIRED_VERIFICATION:
+            verification = attrs.pop('verification', {}) \
+                or self.initial_data.pop('verification', {})
+
             self._run_verification(verification)
         return super().validate(attrs)
 
@@ -165,16 +154,20 @@ class BaseUserSerializer(DynamicFields, serializers.ModelSerializer):
 class CreateUserSerializer(BaseUserSerializer):
     # Added some requirement for register
     retype_password = serializers.CharField(max_length=255, write_only=True)
-    groups = serializers.SlugRelatedField(slug_field='name', write_only=True,
-                                          required=False, queryset=Group.objects.all())
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._groups = None
-        self._groups_instance = None
+    class Meta(BaseUserSerializer.Meta):
+        fields = ('username', 'first_name', 'email', 'msisdn',
+                  'password', 'retype_password', 'verification',)
 
     def get_extra_kwargs(self):
         kwargs = super().get_extra_kwargs()
+
+        # If one of email or msisdn exists
+        if EMAIL_FIELD in self.initial_data:
+            kwargs[MSISDN_FIELD]['required'] = False
+
+        elif MSISDN_FIELD in self.initial_data:
+            kwargs[EMAIL_FIELD]['required'] = False
 
         # mark username not-required if first_name exist
         if 'first_name' in self.initial_data:
@@ -185,25 +178,6 @@ class CreateUserSerializer(BaseUserSerializer):
             kwargs['first_name']['required'] = False
 
         return kwargs
-
-    def to_internal_value(self, data):
-        # use username as first_name
-        if 'first_name' not in data:
-            data['first_name'] = data.get('username')
-
-        # create username
-        if 'username' not in data:
-            # current date and time
-            now = datetime.now()
-            xchar = data['first_name'][:4]
-            xtime = str(datetime.timestamp(now)).split('.', 1)[0]
-            username = slugify('{}-{}'.format(xchar, xtime))
-            data['username'] = username
-
-        # get groups
-        self._groups = data.pop('groups', None)  \
-            or self.initial_data.pop('groups', None)
-        return super().to_internal_value(data)
 
     def validate(self, data):
         # can't use both email and msisdn
@@ -219,40 +193,42 @@ class CreateUserSerializer(BaseUserSerializer):
                 'retype_password': _("Password tidak sama")
             })
 
-        # get groups instance
-        # if not exists use default groups
-        q_groups = Q()
-        if self._groups:
-            q_groups = Q(name=self._groups)
-        else:
-            q_groups = Q(is_default=True)
-
-        try:
-            self._groups_instance = Group.objects.get(q_groups)
-        except ObjectDoesNotExist:
-            pass
-
         return super().validate(data)
 
     @transaction.atomic
     def create(self, validated_data):
+        username = validated_data.get('username')
+        first_name = validated_data.get('first_name')
+
+        # generate first name from username
+        if 'first_name' not in validated_data:
+            validated_data.update({'first_name': username})
+
+        # generate username if not define
+        if 'username' not in validated_data:
+            now = datetime.now()
+            trim_first_name = first_name[:4]
+            timestamp_only = str(datetime.timestamp(now)).split('.', 1)[0]
+            new_username = '{}-{}'.format(trim_first_name, timestamp_only)
+            validated_data.update({'username': slugify(new_username)})
+
+        # set user is_active to True
+        validated_data.update({'is_active': True})
+
         try:
             instance = UserModel.objects.create_user(**validated_data)
         except (IntegrityError, TypeError, ValueError) as e:
             raise DjangoValidationError(str(e))
 
-        if self._groups_instance:
-            self._groups_instance.user_set.add(instance)
+        # set default group
+        try:
+            group = Group.objects.get(is_default=True)
+            group.user_set.add(instance)
+        except ObjectDoesNotExist:
+            pass
 
         # mark verifycode as used
-        if self._verifycode_obj:
-            self._verifycode_obj.mark_used()
-
-            # mark field used in otp verified
-            field_model = 'is_{}_verified'.format(self._verify_field)
-
-            setattr(instance, field_model, True)
-            instance.save(update_fields=[field_model])
+        self._mark_verifycode_used(instance)
         return instance
 
 
@@ -270,19 +246,14 @@ class UpdateUserSerializer(BaseUserSerializer):
         instance.save()
 
         # mark verifycode as used
-        if self._verifycode_obj:
-            self._verifycode_obj.mark_used()
+        self._mark_verifycode_used(instance)
         return instance
 
 
-class RetrieveUserSerializer(DynamicFields, serializers.ModelSerializer):
-    groups = serializers.SlugRelatedField(
-        many=True,
-        read_only=True,
-        slug_field='name'
-    )
+class RetrieveUserSerializer(BaseUserSerializer):
+    url = None
 
-    class Meta:
-        model = User
-        fields = '__all__'
+    class Meta(BaseUserSerializer.Meta):
+        fields = ('uuid', 'email', 'msisdn', 'first_name', 'username', 'name',
+                  'profile', 'is_email_verified', 'is_msisdn_verified')
         depth = 1

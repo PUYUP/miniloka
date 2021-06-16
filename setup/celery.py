@@ -7,7 +7,7 @@ from django.conf import settings
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'setup.settings.production')
 os.environ.setdefault('FORKED_BY_MULTIPROCESSING', '1')
 
-app = Celery('beefix')
+app = Celery('miniloka')
 
 # Using a string here means the worker don't have to serialize
 # the configuration object to child processes.

@@ -9,7 +9,6 @@ from rest_framework.viewsets import ViewSet
 
 
 class ViewSetGetObjMixin(ViewSet):
-    @transaction.atomic
     def _get_instance(self, is_update=False):
         try:
             if is_update:

@@ -5,12 +5,11 @@ from .base import *
 
 
 # GLOBAL CONFIGURATIONS
-APP_NAME = 'OPSIONAL'
-PROJECT_URL = 'www.opsional.com'
-PAGINATION_PER_PAGE = 4
-LOGIN_WITH_JWT = True
+APP_NAME = 'Mini Loka'
+PROJECT_URL = 'www.miniloka.com'
+PAGINATION_PER_PAGE = 20
 LOGOUT_REDIRECT_URL = '/'
-# If true in recovery password need make sure account exist
+# If true in recovery password inquiry make sure account exist
 RECOVERY_PASSWORD_CHECK_ACCOUNT = True
 
 
@@ -30,7 +29,7 @@ PROJECT_APPS = [
     'taggit',
     'simple_history',
     'apps.person',
-    'apps.servo',
+    'apps.procure',
 ]
 INSTALLED_APPS = INSTALLED_APPS + PROJECT_APPS
 
@@ -39,6 +38,7 @@ INSTALLED_APPS = INSTALLED_APPS + PROJECT_APPS
 PROJECT_MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'simple_history.middleware.HistoryRequestMiddleware',
+    # 'apps.person.utils.middleware.AuthMiddleware',
 ]
 MIDDLEWARE = PROJECT_MIDDLEWARE + MIDDLEWARE
 
@@ -62,7 +62,7 @@ CACHES = {
         'OPTIONS': {
             'server_max_value_length': 1024 * 1024 * 2,
         },
-        'KEY_PREFIX': 'beefix_cache'
+        'KEY_PREFIX': 'miniloka_cache'
     }
 }
 
@@ -116,7 +116,8 @@ REST_FRAMEWORK = {
         'django_filters.rest_framework.DjangoFilterBackend',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
+        # for mobile apps this must removed
+        # 'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication'
     ],

@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -69,9 +70,9 @@ class User(AbstractUser):
         return self.groups.filter(name__in=["Owner"]).exists()
 
     @property
-    def members_of(self):
+    def default_listing(self):
         try:
-            return self.members.get(is_current=True)
+            return self.members.get(is_default=True).listing
         except ObjectDoesNotExist:
             return None
 
@@ -105,11 +106,13 @@ class AbstractProfile(models.Model):
                               validators=[identifier_validator, non_python_keyword])
     birthdate = models.DateField(blank=True, null=True)
     about = models.TextField(blank=True, null=True)
-    address = models.TextField(blank=True, null=True)
     picture = models.ImageField(upload_to=_UPLOAD_TO, max_length=500,
                                 null=True, blank=True)
     picture_original = models.ImageField(upload_to=_UPLOAD_TO, max_length=500,
                                          null=True, blank=True)
+    address = models.TextField(blank=True, null=True)
+    latitude = models.FloatField(default=Decimal(0.0), db_index=True)
+    longitude = models.FloatField(default=Decimal(0.0), db_index=True)
 
     class Meta:
         abstract = True
