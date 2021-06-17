@@ -221,6 +221,22 @@ class InquiryApiView(viewsets.ViewSet):
         - inquiry creator
         - or propose creator
         """
+        inquiry = self._instance()
+        inquiry_latitude = inquiry.location.latitude
+        inquiry_longitude = inquiry.location.longitude
+
+        # Calculate distance
+        calculate_distance = Value(6371) * ACos(
+            Cos(Radians(inquiry_latitude, output_field=FloatField()))
+            * Cos(Radians(F('newest_offer_latitude'), output_field=FloatField()))
+            * Cos(Radians(F('newest_offer_longitude'), output_field=FloatField())
+                  - Radians(inquiry_longitude, output_field=FloatField()))
+            + Sin(Radians(inquiry_latitude, output_field=FloatField()))
+            * Sin(Radians(F('newest_offer_latitude'),
+                          output_field=FloatField())),
+            output_field=FloatField()
+        )
+
         newest_offers = Offer.objects \
             .annotate(
                 total_item_cost=Sum('items__cost'),
@@ -242,18 +258,27 @@ class InquiryApiView(viewsets.ViewSet):
             .prefetch_related('listing', 'inquiry', 'user', 'offers') \
             .select_related('listing', 'inquiry', 'user') \
             .annotate(
-                offer_count=Count('offers', distinct=True),
                 newest_offer_cost=Subquery(
-                    newest_offers.values('total_cost')[:1]),
+                    newest_offers.values('total_cost')[:1]
+                ),
                 newest_offer_date=Subquery(
-                    newest_offers.values('create_at')[:1]),
+                    newest_offers.values('create_at')[:1]
+                ),
+                newest_offer_latitude=Subquery(
+                    newest_offers.values('latitude')[:1]
+                ),
+                newest_offer_longitude=Subquery(
+                    newest_offers.values('longitude')[:1]
+                ),
+                distance=calculate_distance,
+                offer_count=Count('offers', distinct=True),
             ) \
             .filter(
                 Q(inquiry__uuid=uuid),
                 Q(offers__user_id=request.user.id)
                 | Q(inquiry__user_id=request.user.id)
             ) \
-            .order_by('-newest_offer_date')
+            .order_by('newest_offer_cost', '-newest_offer_date')
 
         paginator = _PAGINATOR.paginate_queryset(proposes, request)
         serializer = InquiryListProposeSerializer(paginator, many=True,
@@ -276,7 +301,7 @@ class InquiryApiView(viewsets.ViewSet):
         offers = Offer.objects \
             .prefetch_related('items', 'items__inquiry_item', 'propose', 'user') \
             .select_related('propose', 'user') \
-            .annotate(total_offer_cost=Sum('items__cost')) \
+            .annotate(total_item_cost=Sum('items__cost')) \
             .filter(
                 Q(propose__inquiry__uuid=uuid),
                 Q(user_id=request.user.id)

@@ -18,12 +18,14 @@ Propose = get_model('procure', 'Propose')
 
 
 class InquiryListProposeSerializer(serializers.ModelSerializer):
-    newest_offer_cost = serializers.IntegerField(read_only=True)
-    offer_count = serializers.IntegerField(read_only=True)
+    newest_offer_cost = serializers.IntegerField(read_only=True,
+                                                 required=False)
+    offer_count = serializers.IntegerField(read_only=True, required=False)
+    distance = serializers.FloatField(read_only=True, required=False)
 
     class Meta:
         model = Propose
-        fields = ('uuid', 'create_at', 'listing',
+        fields = ('uuid', 'create_at', 'listing', 'distance',
                   'newest_offer_cost', 'offer_count',)
         depth = 1
 

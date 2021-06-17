@@ -50,7 +50,7 @@ class ProposeApiView(ViewSetDestroyObjMixin, viewsets.ViewSet):
         {
             "listing": "uuid",              [required]
             "inquiry": "uuid",              [required]
-            "coordinate": {                 [required]
+            "coordinate": {                 [optional]
                 "latitude": "float",
                 "longitude": "float"
             },
@@ -103,8 +103,8 @@ class ProposeApiView(ViewSetDestroyObjMixin, viewsets.ViewSet):
         self._uuid = None
 
         self._queryset = Propose.objects \
-            .prefetch_related('listing', 'inquiry', 'offers', 'offers__user') \
-            .select_related('listing', 'inquiry')
+            .prefetch_related('user', 'listing', 'inquiry',) \
+            .select_related('user', 'listing', 'inquiry',)
 
     def dispatch(self, request, *args, **kwargs):
         self._uuid = kwargs.get('uuid')
@@ -112,92 +112,8 @@ class ProposeApiView(ViewSetDestroyObjMixin, viewsets.ViewSet):
         return super().dispatch(request, *args, **kwargs)
 
     def _instances(self, order_param=dict()):
-        offer_order_bys = list()
-        passed_fields = ('cost', 'distance',)
-        whole_cost_filter = Q(offers__items__is_newest=True)
-        whole_cost_sum = When(
-            offers__items__isnull=False,
-            then=Sum(
-                'offers__items__cost',
-                filter=whole_cost_filter,
-                output_field=IntegerField()
-            ),
-        )
-
-        try:
-            offers = Offer.objects \
-                .filter(propose_id=OuterRef('id')) \
-                .values('propose')
-        except FieldError as e:
-            raise ValidationError({'detail': str(e)})
-
-        # Calculate distance
-        _query_distance = Value(3959) * ACos(
-            Cos(Radians(F('offer_latitude'), output_field=FloatField()))
-            * Cos(Radians(F('inquiry_latitude'), output_field=FloatField()))
-            * Cos(Radians(F('inquiry_longitude'), output_field=FloatField())
-                  - Radians(F('offer_longitude'), output_field=FloatField()))
-            + Sin(Radians(F('offer_latitude'), output_field=FloatField()))
-            * Sin(Radians(F('inquiry_latitude'), output_field=FloatField())),
-            output_field=FloatField()
-        )
-
-        # Default annotate
-        annotate = {
-            'offer_latitude': Subquery(offers.values('latitude')[:1]),
-            'offer_longitude': Subquery(offers.values('longitude')[:1]),
-            'inquiry_latitude': Coalesce(
-                F('inquiry__location__latitude'),
-                Value(0),
-                output_field=FloatField()
-            ),
-            'inquiry_longitude': Coalesce(
-                F('inquiry__location__longitude'),
-                Value(0),
-                output_field=FloatField()
-            ),
-            'offer_distance': _query_distance,
-            'offer_cost': Case(
-                whole_cost_sum,
-                default=Subquery(offers.values('cost')[:1]),
-                output_field=IntegerField()
-            ),
-            'offer_create_at': Subquery(offers.values('create_at')[:1])
-        }
-
-        if order_param:
-            # make sure order_param has passed_fields
-            n = {k: order_param[k] for k in passed_fields if k in order_param}
-            if n:
-                for key in n:
-                    l = 'offer_%s' % key
-                    direction = n.get(key, None)
-                    if direction == 'desc':
-                        l = '-%s' % l  # 'offer_cost' to '-offer_cost'
-                        key = '-%s' % key  # 'cost' to '-cost'
-                    offer_order_bys.append(l)
-        else:
-            # default order...
-            offer_order_bys = ('-offer_create_at', '-offer_distance',)
-
-        # Whole offer?
-        # If each propose item has rates mark as whole offer
-        annotate.update({
-            'is_whole_offer': Case(
-                When(
-                    offers__items__isnull=False,
-                    then=Value(True),
-                ),
-                default=Value(False),
-                output_field=BooleanField()
-            )
-        })
-
         return self._queryset \
-            .filter(Q(inquiry__user_id=self.request.user.id)
-                    | Q(listing__members__user_id=self.request.user.id)) \
-            .annotate(count_listing=Count('listing'), **annotate) \
-            .order_by(*offer_order_bys)
+            .filter(inquiry__user_id=self.request.user.id)
 
     def _instance(self, is_update=False):
         try:
@@ -207,7 +123,6 @@ class ProposeApiView(ViewSetDestroyObjMixin, viewsets.ViewSet):
                     .get(uuid=self._uuid)
             else:
                 return self._instances() \
-                    .prefetch_related('offers', 'offers__items') \
                     .get(uuid=self._uuid)
         except ObjectDoesNotExist:
             raise NotFound(detail=_("Not found"))

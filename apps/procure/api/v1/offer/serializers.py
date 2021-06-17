@@ -10,7 +10,7 @@ OfferItem = get_model('procure', 'OfferItem')
 
 class BaseOfferSerializer(serializers.ModelSerializer):
     links = serializers.SerializerMethodField()
-    total_offer_cost = serializers.IntegerField(read_only=True)
+    total_item_cost = serializers.IntegerField(read_only=True)
     listing = serializers.CharField(source='propose.listing.label')
 
     def get_links(self, instance):
@@ -30,10 +30,13 @@ READ
 
 
 class OfferItemSerializer(serializers.ModelSerializer):
+    inquiry_item = serializers.CharField(source='inquiry_item.label',
+                                         read_only=True)
+
     class Meta:
         model = OfferItem
         fields = ('uuid', 'create_at', 'cost', 'discount',
-                  'description',)
+                  'description', 'inquiry_item',)
 
 
 class ListOfferSerializer(BaseOfferSerializer):
@@ -45,9 +48,11 @@ class ListOfferSerializer(BaseOfferSerializer):
 
 
 class RetrieveOfferSerializer(BaseOfferSerializer):
+    items = OfferItemSerializer(many=True)
+
     class Meta:
         model = Offer
         fields = ('uuid', 'listing', 'create_at', 'cost', 'discount', 'description',
                   'can_goto', 'can_goto_radius', 'latitude', 'longitude',
-                  'is_newest', 'items', 'total_offer_cost',)
+                  'is_newest', 'items', 'total_item_cost',)
         depth = 1

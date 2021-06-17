@@ -1,9 +1,13 @@
+from apps.procure.api.v1.listing.serializers import ListingLocation
 from django.db import transaction
+from django.db.models import Sum
 from django.utils.translation import gettext_lazy as _
 from django.urls import reverse
 
 from rest_framework import serializers
 from utils.generals import get_model
+
+from ..offer.serializers import RetrieveOfferSerializer
 
 Inquiry = get_model('procure', 'Inquiry')
 InquiryItem = get_model('procure', 'InquiryItem')
@@ -61,7 +65,7 @@ class CreateProposeSerializer(BaseProposeSerializer):
                                            queryset=Inquiry.objects.all())
 
     # Custom fields
-    coordinate = _Coordinate(many=False, write_only=True)
+    coordinate = _Coordinate(many=False, write_only=True, required=False)
     offer = _OfferSerializer(many=False, write_only=True, required=False)
     offer_items = _OffersSerializer(many=True, write_only=True,
                                     required=True, allow_empty=False)
@@ -79,16 +83,24 @@ class CreateProposeSerializer(BaseProposeSerializer):
     def create(self, validated_data):
         offer_data = validated_data.pop('offer', dict())
         offer_items_data = validated_data.pop('offer_items', list())
-        coodinate_data = validated_data.pop('coordinate', dict())
+        coordinate_data = validated_data.pop('coordinate', dict())
+        listing_instance = validated_data.get('listing')
 
         # Create or get propose
         instance, _created = Propose.objects.get_or_create(**validated_data)
+
+        # Get coordinate from listing if not provided from request
+        if not coordinate_data:
+            coordinate_data = {
+                'latitude': listing_instance.location.latitude,
+                'longitude': listing_instance.location.longitude,
+            }
 
         # Create Offer
         offer_instance = Offer.objects.create(propose=instance,
                                               user_id=self._request.user.id,
                                               cost=offer_data.get('cost', 0),
-                                              **coodinate_data)
+                                              **coordinate_data)
 
         # Get unlisted in offer_items inquiry items
         inquiry_items_uuid = [
@@ -132,9 +144,46 @@ class ListProposeSerializer(BaseProposeSerializer):
         depth = 1
 
 
+class _ProposeListingLocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ListingLocation
+        exclude = ('listing',)
+
+
+class _ProposeListingSerializer(serializers.ModelSerializer):
+    location = _ProposeListingLocationSerializer(many=False)
+
+    class Meta:
+        model = Listing
+        fields = '__all__'
+        depth = 1
+
+
 class RetrieveProposeSerializer(BaseProposeSerializer):
+    newest_offer = serializers.SerializerMethodField()
+    listing = _ProposeListingSerializer(many=False, required=False)
+
     class Meta:
         model = Propose
         fields = ('uuid', 'create_at', 'update_at',
-                  'listing', 'inquiry', 'links',)
+                  'links', 'newest_offer', 'listing',)
         depth = 1
+
+    def get_newest_offer(self, instance):
+        """
+        Get newest offer from propose
+        """
+        newest_offer = Offer.objects \
+            .prefetch_related('items', 'items__inquiry_item', 'propose', 'user') \
+            .select_related('propose', 'user') \
+            .annotate(total_item_cost=Sum('items__cost')) \
+            .filter(propose_id=instance.id, is_newest=True) \
+            .order_by('-create_at') \
+            .first()
+
+        if newest_offer:
+            serializer = RetrieveOfferSerializer(newest_offer, many=False,
+                                                 context=self.context)
+            return serializer.data
+        else:
+            return None
