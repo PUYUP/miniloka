@@ -123,3 +123,12 @@ CACHES = {
         'KEY_PREFIX': 'miniloka_cache'
     }
 }
+
+
+# GMAIL SMTP
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = 'hellopuyup@gmail.com'
+EMAIL_HOST_PASSWORD = 'ind0nesi@'  # past the key or password app here
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
