@@ -11,11 +11,17 @@ from .tag import TagItem
 
 
 class AbstractInquiry(AbstractCommonField):
+    class Status(models.TextChoices):
+        OPEN = 'open', _("Open")
+        CLOSE = 'close', _("Close")
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='inquiries',
                              on_delete=models.CASCADE)
     description = models.TextField(null=True, blank=True)
     keyword = models.TextField()
     tags = TaggableManager(through=TagItem, blank=True)
+    status = models.CharField(choices=Status.choices, default=Status.OPEN,
+                              max_length=15)
 
     class Meta:
         abstract = True
