@@ -6,7 +6,7 @@ import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 from corsheaders.defaults import default_headers
 
-DEBUG = True
+DEBUG = False
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
@@ -128,7 +128,7 @@ CACHES = {
 # GMAIL SMTP
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_HOST_USER = 'hellopuyup@gmail.com'
-EMAIL_HOST_PASSWORD = 'ind0nesi@'  # past the key or password app here
+EMAIL_HOST_PASSWORD = 'ind0nesi@AAA'  # past the key or password app here
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 EMAIL_USE_SSL = False
