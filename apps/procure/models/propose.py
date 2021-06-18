@@ -48,8 +48,8 @@ class AbstractOffer(AbstractCommonField):
     discount = models.IntegerField(default=0)
     description = models.TextField(null=True, blank=True)
 
-    can_goto = models.BooleanField(default=True)
-    can_goto_radius = models.IntegerField(null=True, blank=True)
+    can_attend = models.BooleanField(default=True)
+    can_attend_radius = models.IntegerField(null=True, blank=True)
     latitude = models.FloatField(default=Decimal(0.0), db_index=True)
     longitude = models.FloatField(default=Decimal(0.0), db_index=True)
     is_newest = models.BooleanField(default=True, editable=False)

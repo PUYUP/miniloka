@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
+from django.utils import timezone
 from taggit.managers import TaggableManager
 
 from apps.procure.models.abstract import AbstractCommonField
@@ -11,17 +12,14 @@ from .tag import TagItem
 
 
 class AbstractInquiry(AbstractCommonField):
-    class Status(models.TextChoices):
-        OPEN = 'open', _("Open")
-        CLOSE = 'close', _("Close")
-
     user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='inquiries',
                              on_delete=models.CASCADE)
     description = models.TextField(null=True, blank=True)
     keyword = models.TextField()
     tags = TaggableManager(through=TagItem, blank=True)
-    status = models.CharField(choices=Status.choices, default=Status.OPEN,
-                              max_length=15)
+    open_at = models.DateTimeField(null=True, blank=True)
+    close_at = models.DateTimeField(blank=True, null=True)
+    is_open = models.BooleanField(default=True)
 
     class Meta:
         abstract = True
@@ -32,6 +30,11 @@ class AbstractInquiry(AbstractCommonField):
 
     def __str__(self) -> str:
         return self.keyword
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            self.close_at = self.open_at.date() + timezone.timedelta(days=7)
+        super().save(*args, **kwargs)
 
 
 class AbstractInquiryItem(AbstractCommonField):
@@ -126,4 +129,4 @@ class AbstractInquiryLocation(AbstractCommonField):
         verbose_name_plural = _("Inquiry Locations")
 
     def __str__(self) -> str:
-        return self.street_address or self.inquiry.description
+        return '{}, {}'.format(self.latitude, self.longitude)

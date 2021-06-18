@@ -299,14 +299,16 @@ class InquiryApiView(viewsets.ViewSet):
         - or offer creator
         """
         offers = Offer.objects \
-            .prefetch_related('items', 'items__inquiry_item', 'propose', 'user') \
+            .prefetch_related('items', 'items__inquiry_item',
+                              'propose', 'propose__listing', 'user') \
             .select_related('propose', 'user') \
             .annotate(total_item_cost=Sum('items__cost')) \
             .filter(
                 Q(propose__inquiry__uuid=uuid),
                 Q(user_id=request.user.id)
                 | Q(propose__inquiry__user_id=request.user.id)
-            )
+            ) \
+            .order_by('-create_at')
 
         paginator = _PAGINATOR.paginate_queryset(offers, request)
         serializer = ListOfferSerializer(paginator, many=True,
