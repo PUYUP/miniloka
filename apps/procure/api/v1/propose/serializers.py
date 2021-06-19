@@ -83,9 +83,19 @@ class CreateProposeSerializer(BaseProposeSerializer):
         data = super().to_internal_value(data)
         listing_instance = data.get('listing')
 
+        # listing must approved
         if listing_instance.state.status == listing_instance.state.Status.PENDING:
             raise serializers.ValidationError({
                 'detail': _("Bisnis sedang diverifikasi. Tidak bisa mengirim penawaran.")
+            })
+
+        # restric members only
+        members = listing_instance.members \
+            .filter(user_id=self._request.user.id, is_allow_propose=True)
+
+        if not members.exists():
+            raise serializers.ValidationError({
+                'detail': _("Tindakan ditolak. Anda tidak terdaftar dalam bisnis ini.")
             })
         return data
 
