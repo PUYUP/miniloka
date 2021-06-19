@@ -28,31 +28,34 @@ def inquiry_save_handler(sender, instance, created, **kwargs):
         tags = keyword.split(' ')
         instance.tags.set(*tags)
 
-    latitude = instance.location.latitude
-    longitude = instance.location.longitude
+    # filter listing by distance from inquiry
+    if created:
+        latitude = instance.location.latitude
+        longitude = instance.location.longitude
 
-    if latitude and longitude:
-        keywords = re.split(r"[^A-Za-z']+", keyword) if keyword else []
-        keyword_query = Q()
+        if latitude and longitude:
+            keywords = re.split(r"[^A-Za-z']+", keyword) if keyword else []
+            keyword_query = Q()
 
-        for keyword in keywords:
-            keyword_query |= Q(keyword__icontains=keyword)
+            for keyword in keywords:
+                keyword_query |= Q(keyword__icontains=keyword)
 
-        # Calculate distance
-        calculate_distance = Value(6371) * ACos(
-            Cos(Radians(latitude, output_field=FloatField()))
-            * Cos(Radians(F('location__latitude'), output_field=FloatField()))
-            * Cos(Radians(F('location__longitude'), output_field=FloatField())
-                  - Radians(longitude, output_field=FloatField()))
-            + Sin(Radians(latitude, output_field=FloatField()))
-            * Sin(Radians(F('location__latitude'), output_field=FloatField())),
-            output_field=FloatField()
-        )
+            # Calculate distance
+            calculate_distance = Value(6371) * ACos(
+                Cos(Radians(latitude, output_field=FloatField()))
+                * Cos(Radians(F('location__latitude'), output_field=FloatField()))
+                * Cos(Radians(F('location__longitude'), output_field=FloatField())
+                      - Radians(longitude, output_field=FloatField()))
+                + Sin(Radians(latitude, output_field=FloatField()))
+                * Sin(Radians(F('location__latitude'), output_field=FloatField())),
+                output_field=FloatField()
+            )
 
-        # get all listing matching keyword
-        listings = Listing.objects \
-            .annotate(distance=calculate_distance) \
-            .filter(keyword_query, distance__lte=5)
+            # get all listing matching keyword
+            listings = Listing.objects \
+                .annotate(distance=calculate_distance) \
+                .filter(keyword_query, state__status=ListingState.Status.APPROVED,
+                        distance__lte=10)
 
 
 @transaction.atomic()
