@@ -54,6 +54,7 @@ class BaseInquirySerializer(serializers.ModelSerializer):
     items = InquiryItemSerializer(many=True)
     location = InquiryLocationSerializer()
     distance = serializers.FloatField(required=False)
+    newest_offer_cost = serializers.IntegerField(required=False)
 
     class Meta:
         model = Inquiry
@@ -210,4 +211,5 @@ class RetrieveInquirySerializer(BaseInquirySerializer):
 class ListInquirySerializer(RetrieveInquirySerializer, DynamicFieldsModelSerializer):
     class Meta(BaseInquirySerializer.Meta):
         fields = ('uuid', 'links', 'create_at', 'user', 'keyword',
-                  'propose_count', 'items', 'is_offered', 'distance',)
+                  'propose_count', 'items', 'is_offered', 'distance',
+                  'newest_offer_cost',)

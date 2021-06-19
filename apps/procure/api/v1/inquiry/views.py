@@ -117,15 +117,29 @@ class InquiryApiView(viewsets.ViewSet):
             )
 
             newest_offers = Offer.objects \
-                .filter(propose__inquiry_id=OuterRef('pk'),
-                        propose__listing_id=default_listing.id,
-                        propose__listing__members__user_id=user.id)
+                .annotate(
+                    total_item_cost=Sum('items__cost'),
+                    total_cost=Case(
+                        When(cost__lte=0, then=F('total_item_cost')),
+                        default=F('cost'),
+                        output_field=IntegerField()
+                    )
+                ) \
+                .filter(
+                    propose__inquiry_id=OuterRef('pk'),
+                    propose__listing_id=default_listing.id,
+                    propose__listing__members__user_id=user.id
+                ) \
+                .order_by('-create_at')
         else:
             newest_offers = Offer.objects.none()
 
         return self._queryset \
             .annotate(
                 is_offered=Exists(newest_offers),
+                newest_offer_cost=Subquery(
+                    newest_offers.values('total_cost')[:1]
+                ),
                 distance=calculate_distance
             ) \
             .filter(keyword_query) \

@@ -162,11 +162,12 @@ class _ProposeListingSerializer(serializers.ModelSerializer):
 class RetrieveProposeSerializer(BaseProposeSerializer):
     newest_offer = serializers.SerializerMethodField()
     listing = _ProposeListingSerializer(many=False, required=False)
+    inquiry = serializers.UUIDField(source='inquiry.uuid', required=False)
 
     class Meta:
         model = Propose
         fields = ('uuid', 'create_at', 'update_at',
-                  'links', 'newest_offer', 'listing',)
+                  'links', 'newest_offer', 'listing', 'inquiry',)
         depth = 1
 
     def get_newest_offer(self, instance):
