@@ -27,7 +27,7 @@ class AbstractListing(AbstractCommonField):
 class AbstractListingState(AbstractCommonField):
     class Status(models.TextChoices):
         PENDING = 'pending', _("Pending")
-        APROVED = 'aproved', _("Aproved")
+        APPROVED = 'approved', _("Approved")
         REJECTED = 'rejected', _("Rejected")
 
     listing = models.OneToOneField('procure.Listing', on_delete=models.CASCADE,

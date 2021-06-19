@@ -1,6 +1,15 @@
+import re
+
 from django.db import transaction
+from django.db.models.functions import ACos, Cos, Sin, Radians
+from django.db.models import (
+    OuterRef, Exists, Count, Q, F, Sum, Case, When, Value, Subquery,
+    IntegerField, FloatField
+)
+
 from utils.generals import get_model
 
+Listing = get_model('procure', 'Listing')
 ListingLocation = get_model('procure', 'ListingLocation')
 ListingState = get_model('procure', 'ListingState')
 ListingOpening = get_model('procure', 'ListingOpening')
@@ -18,6 +27,32 @@ def inquiry_save_handler(sender, instance, created, **kwargs):
     if keyword:
         tags = keyword.split(' ')
         instance.tags.set(*tags)
+
+    latitude = instance.location.latitude
+    longitude = instance.location.longitude
+
+    if latitude and longitude:
+        keywords = re.split(r"[^A-Za-z']+", keyword) if keyword else []
+        keyword_query = Q()
+
+        for keyword in keywords:
+            keyword_query |= Q(keyword__icontains=keyword)
+
+        # Calculate distance
+        calculate_distance = Value(6371) * ACos(
+            Cos(Radians(latitude, output_field=FloatField()))
+            * Cos(Radians(F('location__latitude'), output_field=FloatField()))
+            * Cos(Radians(F('location__longitude'), output_field=FloatField())
+                  - Radians(longitude, output_field=FloatField()))
+            + Sin(Radians(latitude, output_field=FloatField()))
+            * Sin(Radians(F('location__latitude'), output_field=FloatField())),
+            output_field=FloatField()
+        )
+
+        # get all listing matching keyword
+        listings = Listing.objects \
+            .annotate(distance=calculate_distance) \
+            .filter(keyword_query, distance__lte=5)
 
 
 @transaction.atomic()
