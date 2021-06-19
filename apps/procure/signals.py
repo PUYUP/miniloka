@@ -55,7 +55,7 @@ def inquiry_save_handler(sender, instance, created, **kwargs):
             listings = Listing.objects \
                 .annotate(distance=calculate_distance) \
                 .filter(keyword_query, state__status=ListingState.Status.APPROVED,
-                        distance__lte=10)
+                        distance__lte=15)
 
 
 @transaction.atomic()
