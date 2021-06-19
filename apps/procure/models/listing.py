@@ -64,6 +64,7 @@ class AbstractListingMember(AbstractCommonField):
     is_creator = models.BooleanField(default=False)
     is_default = models.BooleanField(default=False)
     is_allow_propose = models.BooleanField(default=False)
+    is_allow_offer = models.BooleanField(default=False)
 
     objects = ListingMemberManager.as_manager()
 
