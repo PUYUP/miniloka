@@ -312,6 +312,9 @@ class InquiryApiView(viewsets.ViewSet):
         - inquiry creator
         - or offer creator
         """
+        user = request.user
+        default_listing = user.default_listing
+
         offers = Offer.objects \
             .prefetch_related('items', 'items__inquiry_item',
                               'propose', 'propose__listing', 'user') \
@@ -319,8 +322,8 @@ class InquiryApiView(viewsets.ViewSet):
             .annotate(total_item_cost=Sum('items__cost')) \
             .filter(
                 Q(propose__inquiry__uuid=uuid),
-                Q(user_id=request.user.id)
-                | Q(propose__inquiry__user_id=request.user.id)
+                Q(propose__listing_id=default_listing.id),
+                Q(user_id=user.id) | Q(propose__inquiry__user_id=user.id)
             ) \
             .order_by('-create_at')
 

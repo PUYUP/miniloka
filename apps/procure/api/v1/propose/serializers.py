@@ -79,6 +79,16 @@ class CreateProposeSerializer(BaseProposeSerializer):
         super().__init__(*args, **kwargs)
         self._request = self.context.get('request')
 
+    def to_internal_value(self, data):
+        data = super().to_internal_value(data)
+        listing_instance = data.get('listing')
+
+        if listing_instance.state.status == listing_instance.state.Status.PENDING:
+            raise serializers.ValidationError({
+                'detail': _("Bisnis sedang diverifikasi. Tidak bisa mengirim penawaran.")
+            })
+        return data
+
     @transaction.atomic
     def create(self, validated_data):
         offer_data = validated_data.pop('offer', dict())
