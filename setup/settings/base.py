@@ -31,9 +31,9 @@ WSGI_APPLICATION = 'setup.wsgi.application'
 ASGI_APPLICATION = 'setup.asgi.application'
 IS_UNIX = os.name != 'nt'
 
-HOST = '127.0.0.1' # windows
+HOST = '127.0.0.1'  # windows
 if IS_UNIX:
-    HOST = '127.0.0.1' # ubuntu
+    HOST = '127.0.0.1'  # ubuntu
 
 
 # Application definition
@@ -95,7 +95,7 @@ LANGUAGE_CODE = 'id-ID'
 TIME_ZONE = 'Asia/Jakarta'
 USE_I18N = True
 USE_L10N = True
-USE_TZ = True
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)
