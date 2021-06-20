@@ -71,6 +71,8 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
                         distance__lte=settings.DISTANCE_RADIUS) \
                 .values_list('id')
 
+            print(listing_ids)
+
             user_meta_fcm_token = UserMeta.objects \
                 .prefetch_related('user') \
                 .select_related('user') \
