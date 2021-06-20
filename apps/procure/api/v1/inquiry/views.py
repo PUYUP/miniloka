@@ -1,5 +1,6 @@
 import re
 
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import (
@@ -142,7 +143,7 @@ class InquiryApiView(viewsets.ViewSet):
                 ),
                 distance=calculate_distance
             ) \
-            .filter(keyword_query, distance__lte=100000000000005) \
+            .filter(keyword_query, distance__lte=settings.DISTANCE_RADIUS) \
             .exclude(user_id=self.request.user.id) \
             .order_by('distance', '-create_at')
 

@@ -1,6 +1,7 @@
 
 import re
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models.functions import ACos, Cos, Sin, Radians
 from django.db.models import Q, F, Value, FloatField
@@ -57,7 +58,7 @@ def inquiry_save_handler(sender, instance, created, **kwargs):
             listing_ids = Listing.objects \
                 .annotate(distance=calculate_distance) \
                 .filter(keyword_query, state__status=ListingState.Status.APPROVED,
-                        distance__lte=150000000) \
+                        distance__lte=settings.DISTANCE_RADIUS) \
                 .values_list('id')
 
             user_meta_fcm_token = UserMeta.objects \
