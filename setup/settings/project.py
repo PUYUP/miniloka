@@ -20,6 +20,10 @@ USER_REQUIRED_VERIFICATION = True
 USER_VERIFICATION_FIELDS = ['email', 'msisdn']
 
 
+# FIREBASE
+FCM_SERVER_KEY = 'AAAA_LD_cFU:APA91bEa4DNFgSAd9WMEA-8xenfsI2_65oMiTh4AhpF9kX1B8ngq-O7Y4vLKIavfCPqv1zAk13GHjoArA0ZwAQOSuPU8Xp9fszzW3vf6aj1gqpeIWgSwicTWIy2fQj-VB71NQxIEEwKh'
+
+
 # Application definition
 PROJECT_APPS = [
     'channels',

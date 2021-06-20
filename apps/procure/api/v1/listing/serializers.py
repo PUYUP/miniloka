@@ -266,7 +266,8 @@ class CreateListingSerializer(serializers.ModelSerializer):
             ListingMember.objects \
                 .create(user_id=self._user.id, listing_id=instance.id,
                         is_creator=True, is_allow_propose=True,
-                        is_admin=True, is_default=True)
+                        is_allow_propse=True,  is_admin=True,
+                        is_default=True)
         return instance
 
 

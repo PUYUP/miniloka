@@ -28,3 +28,4 @@ phonenumbers>=8.12.21
 pymemcache>=3.4.2
 django-simple-history>=3.0.0
 django-taggit>=1.4.0
+firebase-admin>=5.0.1

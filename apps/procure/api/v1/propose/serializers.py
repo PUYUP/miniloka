@@ -47,14 +47,16 @@ class _Coordinate(serializers.Serializer):
     longitude = serializers.FloatField()
 
 
-class _OffersSerializer(serializers.Serializer):
+class _OfferItemSerializer(serializers.Serializer):
     inquiry_item = serializers.SlugRelatedField(slug_field='uuid',
                                                 queryset=InquiryItem.objects.all())
     cost = serializers.IntegerField(required=True)
+    description = serializers.CharField(required=False, allow_blank=True)
 
 
 class _OfferSerializer(serializers.Serializer):
     cost = serializers.IntegerField(required=True)
+    description = serializers.CharField(required=False, allow_blank=True)
 
 
 class CreateProposeSerializer(BaseProposeSerializer):
@@ -67,8 +69,8 @@ class CreateProposeSerializer(BaseProposeSerializer):
     # Custom fields
     coordinate = _Coordinate(many=False, write_only=True, required=False)
     offer = _OfferSerializer(many=False, write_only=True, required=False)
-    offer_items = _OffersSerializer(many=True, write_only=True,
-                                    required=True, allow_empty=False)
+    offer_items = _OfferItemSerializer(many=True, write_only=True,
+                                       required=True, allow_empty=False)
 
     class Meta:
         model = Propose
@@ -117,10 +119,14 @@ class CreateProposeSerializer(BaseProposeSerializer):
             }
 
         # Create Offer
-        offer_instance = Offer.objects.create(propose=instance,
-                                              user_id=self._request.user.id,
-                                              cost=offer_data.get('cost', 0),
-                                              **coordinate_data)
+        offer_instance = Offer.objects \
+            .create(
+                propose=instance,
+                user_id=self._request.user.id,
+                cost=offer_data.get('cost', 0),
+                description=offer_data.get('description'),
+                **coordinate_data
+            )
 
         # Get unlisted in offer_items inquiry items
         inquiry_items_uuid = [

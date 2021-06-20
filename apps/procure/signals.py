@@ -1,18 +1,20 @@
+
 import re
 
 from django.db import transaction
 from django.db.models.functions import ACos, Cos, Sin, Radians
-from django.db.models import (
-    OuterRef, Exists, Count, Q, F, Sum, Case, When, Value, Subquery,
-    IntegerField, FloatField
-)
+from django.db.models import Q, F, Value, FloatField
+from django.db.models.expressions import OuterRef, Subquery
 
 from utils.generals import get_model
+from .tasks import send_inquiry_notification
 
 Listing = get_model('procure', 'Listing')
 ListingLocation = get_model('procure', 'ListingLocation')
 ListingState = get_model('procure', 'ListingState')
 ListingOpening = get_model('procure', 'ListingOpening')
+ListingMember = get_model('procure', 'ListingMember')
+UserMeta = get_model('person', 'UserMeta')
 
 
 def extract_hash_tags(s):
@@ -29,7 +31,7 @@ def inquiry_save_handler(sender, instance, created, **kwargs):
         instance.tags.set(*tags)
 
     # filter listing by distance from inquiry
-    if created:
+    if not created:
         latitude = instance.location.latitude
         longitude = instance.location.longitude
 
@@ -52,10 +54,36 @@ def inquiry_save_handler(sender, instance, created, **kwargs):
             )
 
             # get all listing matching keyword
-            listings = Listing.objects \
+            listing_ids = Listing.objects \
                 .annotate(distance=calculate_distance) \
                 .filter(keyword_query, state__status=ListingState.Status.APPROVED,
-                        distance__lte=15)
+                        distance__lte=150000000) \
+                .values_list('id')
+
+            user_meta_fcm_token = UserMeta.objects \
+                .prefetch_related('user') \
+                .select_related('user') \
+                .filter(user_id=OuterRef('user__id'), meta_key='fcm_token')
+
+            member_fcm_tokens = ListingMember.objects \
+                .prefetch_related('listing', 'user') \
+                .select_related('listing', 'user') \
+                .annotate(fcm_token=Subquery(
+                    user_meta_fcm_token.values('meta_value')[:1])) \
+                .filter(listing_id__in=listing_ids, fcm_token__isnull=False,
+                        is_allow_offer=True, is_allow_propose=True) \
+                .distinct() \
+                .values_list('fcm_token')
+
+            context = {
+                'fcm_tokens': list(member_fcm_tokens),
+                'inquiry_user': instance.user.name,
+                'inquiry_keyword': instance.keyword,
+            }
+
+            if member_fcm_tokens.exists():
+                send_inquiry_notification.delay(context)  # with celery
+                # send_inquiry_notification(context)  # without celery
 
 
 @transaction.atomic()

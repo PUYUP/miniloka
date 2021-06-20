@@ -142,7 +142,7 @@ class InquiryApiView(viewsets.ViewSet):
                 ),
                 distance=calculate_distance
             ) \
-            .filter(keyword_query, distance__lte=15) \
+            .filter(keyword_query, distance__lte=100000000000005) \
             .exclude(user_id=self.request.user.id) \
             .order_by('distance', '-create_at')
 

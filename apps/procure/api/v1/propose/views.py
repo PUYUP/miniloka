@@ -55,12 +55,14 @@ class ProposeApiView(ViewSetDestroyObjMixin, viewsets.ViewSet):
                 "longitude": "float"
             },
             "offer": {                      [optional]
-                "cost": "integer"
+                "cost": "integer",
+                "description": "string"
             },                                     
             "offer_items": [                [required]
                 {                                             
                     "inquiry_item": "uuid",
-                    "cost": "integer"
+                    "cost": "integer",
+                    "description": "string"
                 }
             ]
         }
