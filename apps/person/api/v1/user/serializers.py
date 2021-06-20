@@ -124,7 +124,7 @@ class BaseUserSerializer(DynamicFields, serializers.ModelSerializer):
                         kwargs={'uuid': instance.uuid})
             ),
             'metas': self._request.build_absolute_uri(
-                reverse('person_api:user-metas',
+                reverse('person_api:user-meta',
                         kwargs={'uuid': instance.uuid})
             ),
         }
