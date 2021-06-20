@@ -46,8 +46,12 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
             keywords = re.split(r"[^A-Za-z']+", keyword) if keyword else []
             keyword_query = Q()
 
+            print(keywords)
+
             for keyword in keywords:
                 keyword_query |= Q(keyword__icontains=keyword)
+
+            print(keyword_query)
 
             # Calculate distance
             calculate_distance = Value(6371) * ACos(
@@ -88,7 +92,6 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
                 'inquiry_keyword': keyword,
             }
 
-            print(member_fcm_tokens, 'DDDD')
             if member_fcm_tokens.exists():
                 send_inquiry_notification.delay(context)  # with celery
                 # send_inquiry_notification(context)  # without celery
