@@ -112,6 +112,7 @@ class BaseUserSerializer(DynamicFields, serializers.ModelSerializer):
         if not settings.USER_REQUIRED_VERIFICATION:
             self.fields.pop('verification', None)
 
+        self._request = self.context.get('request')
         self._verifycode_instance = None
         self._verify_field = None
         self._verify_value = None

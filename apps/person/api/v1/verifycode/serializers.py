@@ -47,6 +47,7 @@ class BaseVerifyCodeSerializer(ExcludeFieldsModelSerializer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
         self._objects_model = self.Meta.model.objects
         self._request = self.context.get('request')
         self._user = None
