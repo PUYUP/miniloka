@@ -15,7 +15,7 @@ def send_inquiry_notification(context):
         'Authorization': 'key=' + settings.FCM_SERVER_KEY
     }
     data = {
-        'registration_ids': list(*context.get('fcm_tokens')),
+        'registration_ids': context.get('fcm_tokens'),
         'notification': {
             'title': '{} {}'.format(context.get('inquiry_user'), 'mengirim permintaan'),
             'body': context.get('inquiry_keyword')

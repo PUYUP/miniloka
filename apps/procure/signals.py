@@ -38,7 +38,7 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
     keyword = inquiry.keyword
 
     # filter listing by distance from inquiry
-    if created:
+    if not created:
         latitude = instance.latitude
         longitude = instance.longitude
 
@@ -65,7 +65,7 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
                 .annotate(distance=calculate_distance) \
                 .filter(keyword_query, state__status=ListingState.Status.APPROVED,
                         distance__lte=settings.DISTANCE_RADIUS) \
-                .values_list('id')
+                .values_list('id', flat=True)
 
             user_meta_fcm_token = UserMeta.objects \
                 .prefetch_related('user') \
@@ -80,7 +80,7 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
                 .filter(listing_id__in=listing_ids, fcm_token__isnull=False,
                         is_allow_offer=True, is_allow_propose=True) \
                 .distinct() \
-                .values_list('fcm_token')
+                .values_list('fcm_token', flat=True)
 
             context = {
                 'fcm_tokens': list(member_fcm_tokens),
