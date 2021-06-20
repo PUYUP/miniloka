@@ -31,7 +31,8 @@ from .serializers import (
     BaseUserSerializer,
     CreateUserSerializer,
     UpdateUserSerializer,
-    RetrieveUserSerializer
+    RetrieveUserSerializer,
+    UserMetaSerializer
 )
 from ..profile.serializers import ProfileSerializer
 
@@ -535,6 +536,33 @@ class UserApiView(viewsets.ViewSet):
         return Response({'detail': _("Password berhasil diperbarui. "
                                      "Silahkan masuk dengan password baru")},
                         status=response_status.HTTP_200_OK)
+
+    # Meta
+    @method_decorator(never_cache)
+    @transaction.atomic
+    @action(methods=['post'], detail=True, permission_classes=[IsAuthenticated],
+            url_path='metas', url_name='meta')
+    def meta(self, request, uuid=None):
+        """
+        POST
+        ------------------
+
+        Param:
+
+            {
+                "meta_key": "string",
+                "meta_value": "string"
+            }
+        """
+        serializer = UserMetaSerializer(data=request.data, many=False,
+                                        context=self._context)
+        if serializer.is_valid(raise_exception=True):
+            try:
+                serializer.save()
+            except DjangoValidationError as e:
+                raise ValidationError({'detail': str(e)})
+            return Response(serializer.data, status=response_status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)
 
 
 class TokenObtainPairSerializerExtend(TokenObtainPairSerializer):

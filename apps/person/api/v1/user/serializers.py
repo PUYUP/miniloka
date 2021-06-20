@@ -8,6 +8,7 @@ from django.utils.translation import ugettext_lazy as _
 from django.utils.text import slugify
 from django.core.validators import EmailValidator
 from django.contrib.auth.models import Group
+from django.urls import reverse
 
 from rest_framework import serializers, status
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -23,6 +24,7 @@ from ..profile.serializers import ProfileSerializer
 
 UserModel = get_user_model()
 User = get_model('person', 'User')
+UserMeta = get_model('person', 'UserMeta')
 VerifyCode = get_model('person', 'VerifyCode')
 
 EMAIL_FIELD = settings.USER_MSISDN_FIELD
@@ -67,8 +69,7 @@ class DynamicFields(serializers.ModelSerializer):
 
 
 class BaseUserSerializer(DynamicFields, serializers.ModelSerializer):
-    url = serializers.HyperlinkedIdentityField(view_name='person_api:user-detail',
-                                               lookup_field='uuid', read_only=True)
+    links = serializers.SerializerMethodField()
     name = serializers.CharField(read_only=True)
     profile = ProfileSerializer(many=False, read_only=True)
 
@@ -114,6 +115,18 @@ class BaseUserSerializer(DynamicFields, serializers.ModelSerializer):
         self._verifycode_instance = None
         self._verify_field = None
         self._verify_value = None
+
+    def get_links(self, instance):
+        return {
+            'retrieve': self._request.build_absolute_uri(
+                reverse('person_api:user-detail',
+                        kwargs={'uuid': instance.uuid})
+            ),
+            'metas': self._request.build_absolute_uri(
+                reverse('person_api:user-metas',
+                        kwargs={'uuid': instance.uuid})
+            ),
+        }
 
     def _run_verification(self, verification):
         """ Before account created validate email or msisdn """
@@ -251,9 +264,27 @@ class UpdateUserSerializer(BaseUserSerializer):
 
 
 class RetrieveUserSerializer(BaseUserSerializer):
-    url = None
+    links = None
 
     class Meta(BaseUserSerializer.Meta):
         fields = ('uuid', 'email', 'msisdn', 'first_name', 'username', 'name',
                   'profile', 'is_email_verified', 'is_msisdn_verified')
         depth = 1
+
+
+class UserMetaSerializer(serializers.ModelSerializer):
+    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
+    class Meta:
+        model = UserMeta
+        fields = ['user', 'meta_key', 'meta_value', ]
+
+    @transaction.atomic()
+    def create(self, validated_data):
+        defaults = {
+            'meta_value': validated_data.pop('meta_value')
+        }
+
+        instance, _created = UserMeta.objects \
+            .update_or_create(defaults=defaults, **validated_data)
+        return instance

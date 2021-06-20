@@ -6,6 +6,7 @@ from utils.generals import get_model
 from .forms import UserChangeFormExtend, UserCreationFormExtend
 
 User = get_model('person', 'User')
+UserMeta = get_model('person', 'UserMeta')
 Profile = get_model('person', 'Profile')
 VerifyCode = get_model('person', 'VerifyCode')
 Permission = get_model('auth', 'Permission')
@@ -15,10 +16,14 @@ class ProfileInline(admin.StackedInline):
     model = Profile
 
 
+class UserMetaInline(admin.StackedInline):
+    model = UserMeta
+
+
 class UserExtend(UserAdmin):
     form = UserChangeFormExtend
     add_form = UserCreationFormExtend
-    inlines = [ProfileInline, ]
+    inlines = [ProfileInline, UserMetaInline, ]
     list_display = ('username', 'first_name', 'email', 'msisdn', 'is_staff')
     fieldsets = (
         (None, {'fields': ('username', 'password', 'email', 'is_email_verified',

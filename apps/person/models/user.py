@@ -131,3 +131,25 @@ class AbstractProfile(models.Model):
     @property
     def last_name(self):
         return self.user.last_name
+
+
+class AbstractUserMeta(models.Model):
+    uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    create_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    update_at = models.DateTimeField(auto_now=True)
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                             related_name='metas')
+
+    meta_key = models.CharField(max_length=255,
+                                validators=[identifier_validator, non_python_keyword])
+    meta_value = models.TextField()
+
+    class Meta:
+        abstract = True
+        app_label = 'person'
+        verbose_name = _("User Meta")
+        verbose_name_plural = _("User Metas")
+
+    def __str__(self):
+        return self.user.username

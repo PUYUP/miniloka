@@ -35,3 +35,12 @@ if not is_model_registered('person', 'VerifyCode'):
             pass
 
     __all__.append('VerifyCode')
+
+
+# 3
+if not is_model_registered('person', 'UserMeta'):
+    class UserMeta(AbstractUserMeta):
+        class Meta(AbstractUserMeta.Meta):
+            pass
+
+    __all__.append('UserMeta')
