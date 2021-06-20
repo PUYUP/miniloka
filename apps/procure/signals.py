@@ -46,12 +46,8 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
             keywords = re.split(r"[^A-Za-z']+", keyword) if keyword else []
             keyword_query = Q()
 
-            print(keywords)
-
             for keyword in keywords:
                 keyword_query |= Q(keyword__icontains=keyword)
-
-            print(keyword_query)
 
             # Calculate distance
             calculate_distance = Value(6371) * ACos(
@@ -70,8 +66,6 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
                 .filter(keyword_query, state__status=ListingState.Status.APPROVED,
                         distance__lte=settings.DISTANCE_RADIUS) \
                 .values_list('id')
-
-            print(listing_ids)
 
             user_meta_fcm_token = UserMeta.objects \
                 .prefetch_related('user') \
