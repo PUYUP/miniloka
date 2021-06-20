@@ -31,10 +31,16 @@ def inquiry_save_handler(sender, instance, created, **kwargs):
         tags = keyword.split(' ')
         instance.tags.set(*tags)
 
+
+@transaction.atomic
+def inquiry_location_save_handler(sender, instance, created, **kwargs):
+    inquiry = instance.inquiry
+    keyword = inquiry.keyword
+
     # filter listing by distance from inquiry
     if created:
-        latitude = instance.location.latitude
-        longitude = instance.location.longitude
+        latitude = instance.latitude
+        longitude = instance.longitude
 
         if latitude and longitude:
             keywords = re.split(r"[^A-Za-z']+", keyword) if keyword else []
@@ -78,8 +84,8 @@ def inquiry_save_handler(sender, instance, created, **kwargs):
 
             context = {
                 'fcm_tokens': list(member_fcm_tokens),
-                'inquiry_user': instance.user.name,
-                'inquiry_keyword': instance.keyword,
+                'inquiry_user': inquiry.user.name,
+                'inquiry_keyword': keyword,
             }
 
             if member_fcm_tokens.exists():

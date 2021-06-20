@@ -137,7 +137,7 @@ class CreateInquirySerializer(BaseInquirySerializer):
                 items_instance, ignore_conflicts=False)
 
         # Insert inquiry location
-        InquiryLocation.objects.create(inquiry=instance, **location)
+        location = InquiryLocation.objects.create(inquiry=instance, **location)
         return instance
 
     @transaction.atomic

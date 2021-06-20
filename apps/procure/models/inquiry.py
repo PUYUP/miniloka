@@ -33,7 +33,8 @@ class AbstractInquiry(AbstractCommonField):
 
     def save(self, *args, **kwargs):
         if not self.pk:
-            self.close_at = self.open_at.date() + timezone.timedelta(days=7)
+            open_at = self.open_at or timezone.now()
+            self.close_at = open_at.date() + timezone.timedelta(days=7)
         super().save(*args, **kwargs)
 
 
