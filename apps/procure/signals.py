@@ -88,6 +88,7 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
                 'inquiry_keyword': keyword,
             }
 
+            print(member_fcm_tokens, 'DDDD')
             if member_fcm_tokens.exists():
                 send_inquiry_notification.delay(context)  # with celery
                 # send_inquiry_notification(context)  # without celery
