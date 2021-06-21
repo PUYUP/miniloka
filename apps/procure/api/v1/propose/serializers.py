@@ -57,6 +57,7 @@ class _OfferItemSerializer(serializers.Serializer):
 class _OfferSerializer(serializers.Serializer):
     cost = serializers.IntegerField(required=True)
     description = serializers.CharField(required=False, allow_blank=True)
+    can_attend = serializers.BooleanField(default=True)
 
 
 class CreateProposeSerializer(BaseProposeSerializer):
@@ -104,6 +105,7 @@ class CreateProposeSerializer(BaseProposeSerializer):
     @transaction.atomic
     def create(self, validated_data):
         offer_data = validated_data.pop('offer', dict())
+        offer_cost = offer_data.pop('cost', 0)
         offer_items_data = validated_data.pop('offer_items', list())
         coordinate_data = validated_data.pop('coordinate', dict())
         listing_instance = validated_data.get('listing')
@@ -123,9 +125,9 @@ class CreateProposeSerializer(BaseProposeSerializer):
             .create(
                 propose=instance,
                 user_id=self._request.user.id,
-                cost=offer_data.get('cost', 0),
-                description=offer_data.get('description'),
-                **coordinate_data
+                cost=offer_cost,
+                **coordinate_data,
+                **offer_data
             )
 
         # Get unlisted in offer_items inquiry items
@@ -147,7 +149,7 @@ class CreateProposeSerializer(BaseProposeSerializer):
         bulk_create_offer_items = []
         for item in offer_items_data:
             item_cost = item.pop('cost', 0)
-            cost = 0 if offer_data.get('cost', 0) > 0 else item_cost
+            cost = 0 if offer_cost > 0 else item_cost
             item_obj = OfferItem(offer=offer_instance, user=self._request.user,
                                  cost=cost, **item)
             bulk_create_offer_items.append(item_obj)
