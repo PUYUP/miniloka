@@ -4,8 +4,11 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models, transaction
+from django.db.models import Q, F
 from django.contrib.auth.models import AbstractUser, UserManager
+from django.db.models.expressions import Exists, OuterRef, Subquery
 from django.utils.translation import ugettext_lazy as _
+from django.utils.text import slugify
 
 from utils.validators import non_python_keyword, identifier_validator
 
@@ -58,16 +61,25 @@ class User(AbstractUser):
         return full_name if self.first_name else self.username
 
     @property
-    def is_customer(self):
-        return self.groups.filter(name__in=["Customer"]).exists()
+    def roles_by_group(self):
+        group_annotate = self.groups.filter(name=OuterRef('name'))
+        all_groups = self.groups.model.objects.all()
+        user_groups = self.groups.all()
 
-    @property
-    def is_employee(self):
-        return self.groups.filter(name__in=["Employee"]).exists()
+        # generate slug for group
+        # ie is_group_name
+        groups_role = {
+            'is_{}'.format(slugify(v.name)): Exists(Subquery(group_annotate.values('name')[:1]))
+            for i, v in enumerate(user_groups)
+        }
 
-    @property
-    def is_owner(self):
-        return self.groups.filter(name__in=["Owner"]).exists()
+        groups = all_groups.annotate(**groups_role)
+        ret = dict()
+
+        for group in groups:
+            slug = 'is_%s' % slugify(group.name)
+            ret.update({slug: getattr(group, slug, False)})
+        return ret
 
     @property
     def default_listing(self):

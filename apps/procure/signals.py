@@ -38,7 +38,7 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
     keyword = inquiry.keyword
 
     # filter listing by distance from inquiry
-    if not created:
+    if created:
         latitude = instance.latitude
         longitude = instance.longitude
 
