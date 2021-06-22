@@ -10,27 +10,27 @@ from celery import shared_task
 
 
 @shared_task
-def send_verifycode_email(data):
-    logging.info(_("Send verifyCode email run"))
+def send_securecode_email(data):
+    logging.info(_("Send secure code email run"))
 
     to = data.get('email', None)
     passcode = data.get('passcode', None)
 
     if to and passcode:
-        subject = _("Kode Verifiaksi")
+        subject = _("Kode Keamanan")
         from_email = '%s <noreply@mydomain.com>' % (settings.APP_NAME)
 
         # Message
         text = _(
-            "JANGAN BERIKAN KODE Kode Verifiaksi ini kepada siapapun "
-            "TERMASUK PIHAK %(app_label)s. Kode Kode Verifiaksi Anda: " +
+            "JANGAN BERIKAN KODE Kode Keamanan ini kepada siapapun "
+            "TERMASUK PIHAK %(app_label)s. Kode Kode Keamanan Anda: " +
             passcode
         ) % {'app_label': settings.APP_NAME}
 
         html = _(
-            "JANGAN BERIKAN KODE Kode Verifiaksi ini kepada siapapun "
+            "JANGAN BERIKAN KODE Kode Keamanan ini kepada siapapun "
             "TERMASUK PIHAK %(app_label)s.<br />"
-            "Kode Kode Verifiaksi Anda: "
+            "Kode Kode Keamanan Anda: "
             "<strong>" + passcode + "</strong>"
             "<br /><br />"
             "Salam, <br /> <strong>%(app_label)s</strong>"
@@ -41,7 +41,7 @@ def send_verifycode_email(data):
                 msg = EmailMultiAlternatives(subject, text, from_email, [to])
                 msg.attach_alternative(html, "text/html")
                 msg.send()
-                logging.info(_("VerifyCode email success"))
+                logging.info(_("SecureCode email success"))
             except smtplib.SMTPConnectError as e:
                 logging.error('SMTPConnectError: %s' % e)
             except smtplib.SMTPAuthenticationError as e:
@@ -58,12 +58,12 @@ def send_verifycode_email(data):
                 logging.warning(_("Invalid header found"))
     else:
         logging.warning(
-            _("Tried to send email to non-existing VerifyCode Code"))
+            _("Tried to send email to non-existing SecureCode Code"))
 
 
 @shared_task
-def send_verifycode_msisdn(data):
-    logging.info(_("Send verifyCode msisdn run"))
+def send_securecode_msisdn(data):
+    logging.info(_("Send secure code msisdn run"))
 
     to = data.get('msisdn', None)
     passcode = data.get('passcode', None)
@@ -72,4 +72,4 @@ def send_verifycode_msisdn(data):
         pass
     else:
         logging.warning(
-            _("Tried to send email to non-existing VerifyCode Code"))
+            _("Tried to send email to non-existing SecureCode Code"))

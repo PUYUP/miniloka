@@ -25,7 +25,7 @@ from ..profile.serializers import ProfileSerializer
 UserModel = get_user_model()
 User = get_model('person', 'User')
 UserMeta = get_model('person', 'UserMeta')
-VerifyCode = get_model('person', 'VerifyCode')
+SecureCode = get_model('person', 'SecureCode')
 
 EMAIL_FIELD = settings.USER_MSISDN_FIELD
 MSISDN_FIELD = settings.USER_EMAIL_FIELD
@@ -113,7 +113,7 @@ class BaseUserSerializer(DynamicFields, serializers.ModelSerializer):
             self.fields.pop('verification', None)
 
         self._request = self.context.get('request')
-        self._verifycode_instance = None
+        self._securecode_instance = None
         self._verify_field = None
         self._verify_value = None
 
@@ -134,15 +134,15 @@ class BaseUserSerializer(DynamicFields, serializers.ModelSerializer):
         verify_field_value = {self._verify_field: self._verify_value}
 
         try:
-            self._verifycode_instance = VerifyCode.objects.select_for_update() \
+            self._securecode_instance = SecureCode.objects.select_for_update() \
                 .verified_unused(**verification, **verify_field_value)
         except ObjectDoesNotExist:
             raise CustomExcpetion({'verification': _("{} belum diverifikasi".format(self._verify_field.upper()))},
                                   status_code=status.HTTP_401_UNAUTHORIZED)
 
-    def _mark_verifycode_used(self, instance):
-        if self._verifycode_instance:
-            self._verifycode_instance.mark_used()
+    def _mark_securecode_used(self, instance):
+        if self._securecode_instance:
+            self._securecode_instance.mark_used()
 
             # mark field verified
             field_model = 'is_{}_verified'.format(self._verify_field)
@@ -241,8 +241,8 @@ class CreateUserSerializer(BaseUserSerializer):
         except ObjectDoesNotExist:
             pass
 
-        # mark verifycode as used
-        self._mark_verifycode_used(instance)
+        # mark securecode as used
+        self._mark_securecode_used(instance)
         return instance
 
 
@@ -259,8 +259,8 @@ class UpdateUserSerializer(BaseUserSerializer):
                         setattr(instance, key, value)
         instance.save()
 
-        # mark verifycode as used
-        self._mark_verifycode_used(instance)
+        # mark securecode as used
+        self._mark_securecode_used(instance)
         return instance
 
 

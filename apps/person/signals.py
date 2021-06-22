@@ -3,7 +3,7 @@ from django.db.models import Q
 from django.contrib.auth.models import Group
 from utils.generals import get_model
 
-from .tasks import send_verifycode_email, send_verifycode_msisdn
+from .tasks import send_securecode_email, send_securecode_msisdn
 
 Profile = get_model('person', 'Profile')
 
@@ -34,7 +34,7 @@ def group_save_handler(sender, instance, created, **kwargs):
 
 
 @transaction.atomic
-def verifycode_save_handler(sender, instance, created, **kwargs):
+def securecode_save_handler(sender, instance, created, **kwargs):
     # create tasks
     # run only on resend and created
     if instance.is_used == False and instance.is_verified == False:
@@ -43,16 +43,16 @@ def verifycode_save_handler(sender, instance, created, **kwargs):
         # Send via email
         if instance.email:
             data.update({'email': getattr(instance, 'email', None)})
-            send_verifycode_email.delay(data)  # with celery
-            # send_verifycode_email(data)  # without celery
+            # send_securecode_email.delay(data)  # with celery
+            send_securecode_email(data)  # without celery
 
         # Send via SMS
         if instance.msisdn:
             data.update({'msisdn': getattr(instance, 'msisdn', None)})
-            send_verifycode_msisdn.delay(data)  # with celery
-            # send_verifycode_msisdn(data)  # without celery
+            send_securecode_msisdn.delay(data)  # with celery
+            # send_securecode_msisdn(data)  # without celery
 
-        # mark oldest VerifyCode as expired
+        # mark oldest SecureCode as expired
         obtain = instance.msisdn or instance.email
         cls = instance.__class__
         oldest = cls.objects \

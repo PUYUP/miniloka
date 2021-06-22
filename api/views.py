@@ -18,7 +18,7 @@ class RootApiView(APIView):
                                          format=format, current_app='person'),
                 'users': reverse('person_api:user-list', request=request,
                                  format=format, current_app='person'),
-                'verifycodes': reverse('person_api:verifycode-list', request=request,
+                'securecodes': reverse('person_api:securecode-list', request=request,
                                        format=format, current_app='person'),
             },
             'procure': {

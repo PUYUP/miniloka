@@ -8,7 +8,7 @@ from .forms import UserChangeFormExtend, UserCreationFormExtend
 User = get_model('person', 'User')
 UserMeta = get_model('person', 'UserMeta')
 Profile = get_model('person', 'Profile')
-VerifyCode = get_model('person', 'VerifyCode')
+SecureCode = get_model('person', 'SecureCode')
 Permission = get_model('auth', 'Permission')
 
 
@@ -50,8 +50,8 @@ class UserExtend(UserAdmin):
         return queryset
 
 
-class VerifyCodeExtend(admin.ModelAdmin):
-    model = VerifyCode
+class SecureCodeExtend(admin.ModelAdmin):
+    model = SecureCode
     list_display = ('email', 'msisdn', 'passcode', 'challenge', 'is_verified',
                     'is_used', 'is_expired', 'token', 'user_agent',)
     list_display_links = ('email', 'msisdn',)
@@ -72,4 +72,4 @@ class VerifyCodeExtend(admin.ModelAdmin):
 
 
 admin.site.register(User, UserExtend)
-admin.site.register(VerifyCode, VerifyCodeExtend)
+admin.site.register(SecureCode, SecureCodeExtend)

@@ -8,7 +8,7 @@ from rest_framework import serializers
 from utils.generals import get_model
 
 UserModel = get_user_model()
-VerifyCode = get_model('person', 'VerifyCode')
+SecureCode = get_model('person', 'SecureCode')
 
 
 # Password verification

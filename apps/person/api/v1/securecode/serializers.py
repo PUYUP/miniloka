@@ -14,15 +14,15 @@ from apps.person.utils.auth import get_users_by_email_or_msisdn
 from apps.person.utils.generator import generate_token_uidb64_with_email, generate_token_uidb64_with_msisdn
 
 User = get_user_model()
-VerifyCode = get_model('person', 'VerifyCode')
+SecureCode = get_model('person', 'SecureCode')
 
 EMAIL_FIELD = settings.USER_EMAIL_FIELD
 MSISDN_FIELD = settings.USER_MSISDN_FIELD
 
 
-class BaseVerifyCodeSerializer(ExcludeFieldsModelSerializer):
+class BaseSecureCodeSerializer(ExcludeFieldsModelSerializer):
     class Meta:
-        model = VerifyCode
+        model = SecureCode
         fields = ('uuid', 'email', 'msisdn', 'challenge',
                   'valid_until', 'is_verified',)
         read_only_fields = ('uuid', 'is_verified',)
@@ -51,7 +51,7 @@ class BaseVerifyCodeSerializer(ExcludeFieldsModelSerializer):
         self._objects_model = self.Meta.model.objects
         self._request = self.context.get('request')
         self._user = None
-        self._password_recovery = VerifyCode.ChallengeType.PASSWORD_RECOVERY.value
+        self._password_recovery = SecureCode.ChallengeType.PASSWORD_RECOVERY.value
 
     def get_extra_kwargs(self):
         kwargs = super().get_extra_kwargs()
@@ -71,9 +71,9 @@ class BaseVerifyCodeSerializer(ExcludeFieldsModelSerializer):
         return kwargs
 
 
-class CreateVerifyCodeSerializer(BaseVerifyCodeSerializer):
-    class Meta(BaseVerifyCodeSerializer.Meta):
-        model = VerifyCode
+class CreateSecureCodeSerializer(BaseSecureCodeSerializer):
+    class Meta(BaseSecureCodeSerializer.Meta):
+        model = SecureCode
         fields = ('email', 'msisdn', 'challenge',)
 
     def validate(self, attrs):
@@ -83,11 +83,11 @@ class CreateVerifyCodeSerializer(BaseVerifyCodeSerializer):
 
         # Check user exists
         challenge = attrs.get('challenge')
-        email_validation = VerifyCode.ChallengeType.EMAIL_VALIDATION.value
-        msisdn_validation = VerifyCode.ChallengeType.MSISDN_VALIDATION.value
+        email_validation = SecureCode.ChallengeType.EMAIL_VALIDATION.value
+        msisdn_validation = SecureCode.ChallengeType.MSISDN_VALIDATION.value
 
-        change_email = VerifyCode.ChallengeType.CHANGE_EMAIL.value
-        change_msisdn = VerifyCode.ChallengeType.CHANGE_MSISDN.value
+        change_email = SecureCode.ChallengeType.CHANGE_EMAIL.value
+        change_msisdn = SecureCode.ChallengeType.CHANGE_MSISDN.value
 
         if challenge in {self._password_recovery, email_validation, msisdn_validation, change_email, change_msisdn}:
             email_or_msisdn = attrs.get('email') or attrs.get('msisdn')
@@ -126,14 +126,14 @@ class CreateVerifyCodeSerializer(BaseVerifyCodeSerializer):
             'is_expired': False
         })
 
-        # If `valid_until` greater than time now we update VerifyCode Code
+        # If `valid_until` greater than time now we update SecureCode Code
         obj, _created = self._objects_model.generate(data={**validated_data})
         return obj
 
 
-class ValidateVerifyCodeSerializer(BaseVerifyCodeSerializer):
-    class Meta(BaseVerifyCodeSerializer.Meta):
-        model = VerifyCode
+class ValidateSecureCodeSerializer(BaseSecureCodeSerializer):
+    class Meta(BaseSecureCodeSerializer.Meta):
+        model = SecureCode
         fields = ('email', 'msisdn', 'challenge', 'token',)
 
     def __init__(self, *args, **kwargs):
@@ -151,7 +151,7 @@ class ValidateVerifyCodeSerializer(BaseVerifyCodeSerializer):
             self.instance = self._instance_query \
                 .unverified_unused(**ret, passcode=self._passcode)
         except ObjectDoesNotExist:
-            raise NotAcceptable(detail=_("Kode verifikasi invalid"))
+            raise NotAcceptable(detail=_("Kode keamanan salah"))
         return ret
 
     @transaction.atomic
@@ -163,19 +163,19 @@ class ValidateVerifyCodeSerializer(BaseVerifyCodeSerializer):
         user = request.user
         if user.is_authenticated:
             # mark email verified
-            if instance.challenge == VerifyCode.ChallengeType.EMAIL_VALIDATION:
+            if instance.challenge == SecureCode.ChallengeType.EMAIL_VALIDATION:
                 user.mark_email_verified()
 
             # mark msisdn verified
-            if instance.challenge == VerifyCode.ChallengeType.MSISDN_VALIDATION:
+            if instance.challenge == SecureCode.ChallengeType.MSISDN_VALIDATION:
                 user.mark_msisdn_verified()
 
         return instance
 
 
-class RetrieveVerifyCodeSerialzer(BaseVerifyCodeSerializer):
-    class Meta(BaseVerifyCodeSerializer.Meta):
-        model = VerifyCode
+class RetrieveSecureCodeSerialzer(BaseSecureCodeSerializer):
+    class Meta(BaseSecureCodeSerializer.Meta):
+        model = SecureCode
         fields = ('challenge', 'email', 'msisdn', 'is_verified', 'token',)
 
     def to_representation(self, instance):

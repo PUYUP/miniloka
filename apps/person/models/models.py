@@ -1,5 +1,5 @@
 from .user import *
-from .verifycode import *
+from .securecode import *
 
 from django.contrib.auth.models import Group
 from utils.generals import is_model_registered
@@ -29,12 +29,12 @@ if not is_model_registered('person', 'Profile'):
 
 
 # 2
-if not is_model_registered('person', 'VerifyCode'):
-    class VerifyCode(AbstractVerifyCode):
-        class Meta(AbstractVerifyCode.Meta):
+if not is_model_registered('person', 'SecureCode'):
+    class SecureCode(AbstractSecureCode):
+        class Meta(AbstractSecureCode.Meta):
             pass
 
-    __all__.append('VerifyCode')
+    __all__.append('SecureCode')
 
 
 # 3

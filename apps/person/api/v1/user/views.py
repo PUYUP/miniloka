@@ -47,7 +47,7 @@ from apps.person.utils.password import ChangePassword, PasswordRecovery
 
 UserModel = get_user_model()
 Profile = get_model('person', 'Profile')
-VerifyCode = get_model('person', 'VerifyCode')
+SecureCode = get_model('person', 'SecureCode')
 
 # Define to avoid used ...().paginate__
 _PAGINATOR = LimitOffsetPagination()
@@ -270,8 +270,8 @@ class UserApiView(viewsets.ViewSet):
             raise NotAcceptable(_("Email `{email}` terdaftar lebih dari satu akun. Jika merasa belum pernah mendaftar"
                                   " dengan email tersebut silahkan hubungi kami.".format(email=email)))
         except ObjectDoesNotExist:
-            # Check the email has been used in VerifyCode
-            check = VerifyCode.objects.filter(
+            # Check the email has been used in SecureCode
+            check = SecureCode.objects.filter(
                 email=email, is_used=False, is_expired=False)
             return Response(
                 {
@@ -312,7 +312,7 @@ class UserApiView(viewsets.ViewSet):
                                   " dengan msisdn tersebut silahkan hubungi kami.".format(msisdn=msisdn)))
         except ObjectDoesNotExist:
             # Check whether the msisdn has been used
-            check = VerifyCode.objects.filter(
+            check = SecureCode.objects.filter(
                 msisdn=msisdn, is_used=False, is_expired=False)
             return Response(
                 {
@@ -444,52 +444,52 @@ class UserApiView(viewsets.ViewSet):
         Param:
 
             {
-                "verifycode_email": "string",
-                "verifycode_msisdn": "string",
-                "verifycode_passcode": "string",
-                "verifycode_token": "string",
+                "securecode_email": "string",
+                "securecode_msisdn": "string",
+                "securecode_passcode": "string",
+                "securecode_token": "string",
                 "new_password": "string",
                 "retype_password": "string",
                 "password_token": "string",
                 "password_uidb64": "string"
             }
 
-        :token captured from verifycode validation
+        :token captured from securecode validation
         """
 
-        VERIFYCODE_EMAIL = 'email'
-        VERIFYCODE_EMAIL_PARAM = 'verifycode_{}'.format(VERIFYCODE_EMAIL)
-        VERIFYCODE_MSISDN = 'msisdn'
-        VERIFYCODE_MSISDN_PARAM = 'verifycode_{}'.format(VERIFYCODE_MSISDN)
+        SECURECODE_EMAIL = 'email'
+        SECURECODE_EMAIL_PARAM = 'securecode_{}'.format(SECURECODE_EMAIL)
+        SECURECODE_MSISDN = 'msisdn'
+        SECURECODE_MSISDN_PARAM = 'securecode_{}'.format(SECURECODE_MSISDN)
 
-        if VERIFYCODE_EMAIL_PARAM in request.data and VERIFYCODE_MSISDN_PARAM in request.data:
+        if SECURECODE_EMAIL_PARAM in request.data and SECURECODE_MSISDN_PARAM in request.data:
             raise ValidationError(
                 detail=_("Can't use both email and msisdn"))
 
-        verifycode_value = request.data.get(
-            VERIFYCODE_EMAIL_PARAM) or request.data.get(VERIFYCODE_MSISDN_PARAM)
-        verifycode_field = next((key for key, value in request.data.items()
-                                 if value == verifycode_value), None)
+        securecode_value = request.data.get(
+            SECURECODE_EMAIL_PARAM) or request.data.get(SECURECODE_MSISDN_PARAM)
+        securecode_field = next((key for key, value in request.data.items()
+                                 if value == securecode_value), None)
 
-        if verifycode_field is None:
+        if securecode_field is None:
             raise ValidationError(
-                detail=_("verifycode_msisdn or verifycode_email required"))
+                detail=_("securecode_msisdn or securecode_email required"))
 
         new_password = request.data.get('new_password')
         retype_password = request.data.get('retype_password')
         password_uidb64 = request.data.get('password_uidb64')
         password_token = request.data.get('password_token')
-        verifycode_passcode = request.data.get('verifycode_passcode')
-        verifycode_token = request.data.get('verifycode_token')
+        securecode_passcode = request.data.get('securecode_passcode')
+        securecode_token = request.data.get('securecode_token')
 
         # Init recovery function
         # If all passed will return None
         recover = PasswordRecovery(new_password, retype_password,
                                    password_token, password_uidb64)
 
-        # Check and validate verifycode
-        recover.get_verifycode(verifycode_token, verifycode_field.replace('verifycode_', ''),
-                               verifycode_value, verifycode_passcode)
+        # Check and validate securecode
+        recover.get_securecode(securecode_token, securecode_field.replace('securecode_', ''),
+                               securecode_value, securecode_passcode)
 
         # Finally, set the password
         try:

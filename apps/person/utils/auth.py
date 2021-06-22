@@ -123,12 +123,12 @@ def get_users_by(field='email', value=None):
     )
 
 
-def clear_verifycode_session(request, interact):
-    # clear verifycode session
+def clear_securecode_session(request, interact):
+    # clear securecode session
     session_key = ['uuid', 'token', 'challenge', 'msisdn', 'email']
     for key in session_key:
         try:
-            del request.session['verifycode_%s_%s' % (interact, key)]
+            del request.session['securecode_%s_%s' % (interact, key)]
         except KeyError:
             pass
 

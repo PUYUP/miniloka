@@ -9,7 +9,7 @@ from django.utils import timezone
 from utils.validators import non_python_keyword
 
 
-class VerifyCodeQuerySet(models.query.QuerySet):
+class SecureCodeQuerySet(models.query.QuerySet):
     def _base_query(self, email=None, msisdn=None, token=None,
                     passcode=None, challenge=None):
         qs = self.filter(Q(email=Case(When(email__isnull=False, then=Value(email))))
@@ -52,7 +52,7 @@ class VerifyCodeQuerySet(models.query.QuerySet):
         return obj, created
 
 
-class AbstractVerifyCode(models.Model):
+class AbstractSecureCode(models.Model):
     class ChallengeType(models.TextChoices):
         EMAIL_VALIDATION = 'email_validation', _("Validate Email")
         MSISDN_VALIDATION = 'msisdn_validation', _("Validate MSISDN")
@@ -64,11 +64,11 @@ class AbstractVerifyCode(models.Model):
         CHANGE_PASSWORD = 'change_password', _("Change Password")
 
     """
-    Send VerifyCode Code with;
+    Send SecureCode Code with;
         :email
         :msisdn (SMS or Voice Call)
 
-    :valid_until; VerifyCode Code validity max date (default 2 hour)
+    :valid_until; SecureCode Code validity max date (default 2 hour)
     :is_expired; expired
     """
     uuid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
@@ -100,13 +100,13 @@ class AbstractVerifyCode(models.Model):
     is_expired = models.BooleanField(default=False)
     user_agent = models.TextField(null=True, blank=True)
 
-    objects = VerifyCodeQuerySet.as_manager()
+    objects = SecureCodeQuerySet.as_manager()
 
     class Meta:
         abstract = True
         app_label = 'person'
-        verbose_name = _("Verify Code")
-        verbose_name_plural = _("Verify Codes")
+        verbose_name = _("Secure Code")
+        verbose_name_plural = _("Secure Codes")
 
     def __str__(self):
         return self.passcode
@@ -128,14 +128,14 @@ class AbstractVerifyCode(models.Model):
             self.is_expired = True
             self.save(update_fields=['is_expired'])
             raise ValidationError(
-                {'valid_until': _("VerifyCode code expired on %s" % (self.valid_until))})
+                {'valid_until': _("SecureCode code expired on %s" % (self.valid_until))})
 
         # now real validation
-        tverifycode = pyotp.TOTP(self.token)
-        passed = tverifycode.verify(
+        tsecurecode = pyotp.TOTP(self.token)
+        passed = tsecurecode.verify(
             self.passcode, for_time=self.valid_until_timestamp)
         if not passed:
-            raise ValidationError({'passcode': _("VerifyCode Code invalid")})
+            raise ValidationError({'passcode': _("SecureCode Code invalid")})
 
         # all passed and mark as verified!
         self.is_verified = True
@@ -152,7 +152,7 @@ class AbstractVerifyCode(models.Model):
         self.valid_until_timestamp = self.valid_until.replace(
             microsecond=0).timestamp()
 
-        # generate VerifyCode
+        # generate SecureCode
         token = pyotp.random_base32()
         totp = pyotp.TOTP(token)
         passcode = totp.at(self.valid_until_timestamp)
@@ -163,7 +163,7 @@ class AbstractVerifyCode(models.Model):
 
     @transaction.atomic()
     def save(self, *args, **kwargs):
-        # generate VerifyCode code
+        # generate SecureCode code
         if not self.is_verified:
             self.generate_passcode()
         super().save(*args, **kwargs)

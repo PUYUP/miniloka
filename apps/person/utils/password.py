@@ -21,7 +21,7 @@ class PasswordRecovery:
         self.retype_password = str(retype_password)
         self.token = token
         self.uidb64 = uidb64
-        self.verifycode = None
+        self.securecode = None
 
     def _validate_password(self):
         if self.new_password != self.retype_password:
@@ -50,29 +50,29 @@ class PasswordRecovery:
                                   code='user_not_found')
         return user
 
-    def get_verifycode(self, token, field, value, passcode):
-        VerifyCode = get_model('person', 'VerifyCode')
+    def get_securecode(self, token, field, value, passcode):
+        SecureCode = get_model('person', 'SecureCode')
         obtain = {field: value}
         challenge = 'password_recovery'
 
         try:
-            self.verifycode = VerifyCode.objects.select_for_update() \
+            self.securecode = SecureCode.objects.select_for_update() \
                 .verified_unused(token=token, challenge=challenge,
                                  passcode=passcode, **obtain)
         except ObjectDoesNotExist:
-            return ValidationError(message=_("Invalid verify code"),
-                                   code='verifycode_invalid')
+            return ValidationError(message=_("Invalid secure code"),
+                                   code='securecode_invalid')
 
     def save_password(self):
-        if self.verifycode is None:
-            raise ValidationError(message=_("Empty verify code"),
-                                  code='verifycode_empty')
+        if self.securecode is None:
+            raise ValidationError(message=_("Empty secure code"),
+                                  code='securecode_empty')
 
         self._validate_password()
         self._validate_token()
 
         user = self._get_user()
-        self.verifycode.mark_used()
+        self.securecode.mark_used()
         user.set_password(self.retype_password)
         user.save()
 

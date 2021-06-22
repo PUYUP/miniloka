@@ -13,18 +13,18 @@ class PersonConfig(AppConfig):
         from .signals import (
             user_save_handler,
             group_save_handler,
-            verifycode_save_handler
+            securecode_save_handler
         )
 
-        VerifyCode = self.get_model('VerifyCode')
+        SecureCode = self.get_model('SecureCode')
 
         # User
         post_save.connect(user_save_handler, sender=settings.AUTH_USER_MODEL,
                           dispatch_uid='user_save_signal')
 
-        # Verifycode
-        post_save.connect(verifycode_save_handler, sender=VerifyCode,
-                          dispatch_uid='verifycode_save_signal')
+        # Secure code
+        post_save.connect(securecode_save_handler, sender=SecureCode,
+                          dispatch_uid='securecode_save_signal')
 
         # Group
         post_save.connect(group_save_handler, sender=Group,

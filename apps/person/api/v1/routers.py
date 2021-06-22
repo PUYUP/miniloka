@@ -6,12 +6,12 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 # LOCAL
 from .user.views import TokenObtainPairViewExtend, UserApiView
-from .verifycode.views import VerifyCodeApiView
+from .securecode.views import SecureCodeApiView
 
 # Create a router and register our viewsets with it.
 router = DefaultRouter(trailing_slash=True)
 router.register('users', UserApiView, basename='user')
-router.register('verifycodes', VerifyCodeApiView, basename='verifycode')
+router.register('securecodes', SecureCodeApiView, basename='securecode')
 
 # The API URLs are now determined automatically by the router.
 urlpatterns = [

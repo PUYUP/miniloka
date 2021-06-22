@@ -8,7 +8,7 @@ from utils.generals import get_model
 
 UserModel = get_user_model()
 Profile = get_model('person', 'Profile')
-VerifyCode = get_model('person', 'VerifyCode')
+SecureCode = get_model('person', 'SecureCode')
 
 register(UserModel, app=__package__,
          history_id_field=models.UUIDField(default=uuid.uuid4))
@@ -16,5 +16,5 @@ register(UserModel, app=__package__,
 register(Profile, app=__package__,
          history_id_field=models.UUIDField(default=uuid.uuid4))
 
-register(VerifyCode, app=__package__,
+register(SecureCode, app=__package__,
          history_id_field=models.UUIDField(default=uuid.uuid4))

@@ -12,15 +12,15 @@ from rest_framework.exceptions import NotFound
 from utils.validators import csrf_protect_drf
 from utils.generals import get_model
 from .serializers import (
-    CreateVerifyCodeSerializer,
-    RetrieveVerifyCodeSerialzer,
-    ValidateVerifyCodeSerializer
+    CreateSecureCodeSerializer,
+    RetrieveSecureCodeSerialzer,
+    ValidateSecureCodeSerializer
 )
 
-VerifyCode = get_model('person', 'VerifyCode')
+SecureCode = get_model('person', 'SecureCode')
 
 
-class VerifyCodeApiView(viewsets.ViewSet):
+class SecureCodeApiView(viewsets.ViewSet):
     """
     POST
     ---------------
@@ -70,7 +70,7 @@ class VerifyCodeApiView(viewsets.ViewSet):
 
     def _get_queryset(self):
         """General query affected for entire object"""
-        query = VerifyCode.objects
+        query = SecureCode.objects
         return query
 
     def _get_object(self):
@@ -84,7 +84,7 @@ class VerifyCodeApiView(viewsets.ViewSet):
     @method_decorator(never_cache)
     @transaction.atomic
     def create(self, request, format=None):
-        serializer = CreateVerifyCodeSerializer(data=request.data,
+        serializer = CreateSecureCodeSerializer(data=request.data,
                                                 context=self._context)
         if serializer.is_valid(raise_exception=True):
             try:
@@ -92,7 +92,7 @@ class VerifyCodeApiView(viewsets.ViewSet):
             except ValidationError as e:
                 return Response({'detail': _(" ".join(e.messages))}, status=response_status.HTTP_406_NOT_ACCEPTABLE)
 
-            _serializer = RetrieveVerifyCodeSerialzer(
+            _serializer = RetrieveSecureCodeSerialzer(
                 serializer.instance, context=self._context, many=False)
             return Response(_serializer.data, status=response_status.HTTP_201_CREATED)
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)
@@ -102,7 +102,7 @@ class VerifyCodeApiView(viewsets.ViewSet):
     def partial_update(self, request, passcode=None):
         # Instance set to objects None
         self._context.update({'passcode': passcode})
-        serializer = ValidateVerifyCodeSerializer(VerifyCode.objects.none(), data=request.data, partial=False,
+        serializer = ValidateSecureCodeSerializer(SecureCode.objects.none(), data=request.data, partial=False,
                                                   context=self._context)
         if serializer.is_valid(raise_exception=True):
             try:
@@ -110,7 +110,7 @@ class VerifyCodeApiView(viewsets.ViewSet):
             except ValidationError as e:
                 return Response({'detail': _(" ".join(e.messages))}, status=response_status.HTTP_406_NOT_ACCEPTABLE)
 
-            _serializer = RetrieveVerifyCodeSerialzer(
+            _serializer = RetrieveSecureCodeSerialzer(
                 serializer.instance, context=self._context, many=False)
             return Response(_serializer.data, status=response_status.HTTP_201_CREATED)
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)

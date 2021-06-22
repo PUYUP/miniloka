@@ -83,8 +83,11 @@ class InquiryApiView(viewsets.ViewSet):
 
         user = self.request.user
         default_listing = user.default_listing
+        default_listing_id = None
+        calculate_distance = Value(None, output_field=FloatField())
 
         if default_listing:
+            default_listing_id = default_listing.id
             listing_latitude = default_listing.location.latitude
             listing_longitude = default_listing.location.longitude
 
@@ -99,31 +102,32 @@ class InquiryApiView(viewsets.ViewSet):
                 output_field=FloatField()
             )
 
-            newest_offers = Offer.objects \
-                .prefetch_related('propose', 'items') \
-                .select_related('propose', 'items') \
-                .annotate(
-                    total_item_cost=Sum('items__cost'),
-                    total_cost=Case(
-                        When(cost__lte=0, then=F('total_item_cost')),
-                        default=F('cost'),
-                        output_field=IntegerField()
-                    )
-                ) \
-                .filter(
-                    propose__inquiry_id=OuterRef('pk'),
-                    propose__listing_id=default_listing.id,
-                    propose__listing__members__user_id=user.id
-                ) \
-                .order_by('-create_at')
-        else:
-            newest_offers = Offer.objects.none()
+        newest_offers = Offer.objects \
+            .prefetch_related('propose', 'items') \
+            .select_related('propose', 'items') \
+            .annotate(
+                total_item_cost=Sum('items__cost'),
+                total_cost=Case(
+                    When(cost__lte=0, then=F('total_item_cost')),
+                    default=F('cost'),
+                    output_field=IntegerField()
+                )
+            ) \
+            .filter(
+                propose__inquiry_id=OuterRef('pk'),
+                propose__listing_id=default_listing_id,
+                propose__listing__members__user_id=user.id
+            ) \
+            .order_by('-create_at')
 
         return self._queryset \
             .annotate(
                 is_offered=Exists(newest_offers),
-                newest_offer_cost=Subquery(
-                    newest_offers.values('total_cost')[:1]
+                newest_offer_cost=Case(
+                    When(is_offered=True, then=Subquery(
+                        newest_offers.values('total_cost')[:1])
+                    ),
+                    default=Value(None)
                 ),
                 distance=Case(
                     When(~Q(user__id=self.request.user.id),
@@ -210,10 +214,11 @@ class InquiryApiView(viewsets.ViewSet):
         keyword = params.get('keyword', None)
 
         if obtain == 'hunt':
-            instances = self._instances(keyword)
+            instances = self._instances(keyword=keyword) \
+                .exclude(user_id=request.user.id)
         else:
-            instances = self._instances(
-                keyword).filter(user_id=request.user.id)
+            instances = self._instances(keyword=keyword) \
+                .filter(user_id=request.user.id)
 
         paginator = _PAGINATOR.paginate_queryset(instances, request)
         serializer = ListInquirySerializer(paginator, context=self._context,
