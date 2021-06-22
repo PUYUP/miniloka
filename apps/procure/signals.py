@@ -38,7 +38,7 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
     keyword = inquiry.keyword
 
     # filter listing by distance from inquiry
-    if created:
+    if not created:
         latitude = instance.latitude
         longitude = instance.longitude
 
@@ -61,10 +61,11 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
             )
 
             # get all listing matching keyword
+            # except listing from creator
             listing_ids = Listing.objects \
                 .annotate(distance=calculate_distance) \
-                .filter(keyword_query, state__status=ListingState.Status.APPROVED,
-                        distance__lte=settings.DISTANCE_RADIUS) \
+                .filter(keyword_query, state__status=ListingState.Status.APPROVED) \
+                .exclude(members__user__id=inquiry.user.id) \
                 .values_list('id', flat=True)
 
             user_meta_fcm_token = UserMeta.objects \
@@ -89,8 +90,9 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
             }
 
             if member_fcm_tokens.exists():
-                send_inquiry_notification.delay(context)  # with celery
+                # send_inquiry_notification.delay(context)  # with celery
                 # send_inquiry_notification(context)  # without celery
+                pass
 
 
 @transaction.atomic()
