@@ -73,26 +73,8 @@ class InquiryApiView(viewsets.ViewSet):
         self._context.update({'request': request})
         return super().dispatch(request, *args, **kwargs)
 
-    def _instances(self):
-        return self._queryset \
-            .annotate(propose_count=Count('proposes')) \
-            .order_by('-create_at')
-
-    # My own inquiries
-    def _instance(self, is_update=False):
-        try:
-            if is_update:
-                return self._instances().select_for_update() \
-                    .get(uuid=self._uuid)
-            else:
-                return self._instances().get(uuid=self._uuid)
-        except ObjectDoesNotExist:
-            raise NotFound(detail=_("Not found"))
-        except DjangoValidationError as e:
-            raise ValidationError(detail=str(e))
-
     # People inquiries
-    def _hunt_instances(self, keyword):
+    def _instances(self, keyword=None):
         keywords = re.split(r"[^A-Za-z']+", keyword) if keyword else []
         keyword_query = Q()
 
@@ -118,6 +100,8 @@ class InquiryApiView(viewsets.ViewSet):
             )
 
             newest_offers = Offer.objects \
+                .prefetch_related('propose', 'items') \
+                .select_related('propose', 'items') \
                 .annotate(
                     total_item_cost=Sum('items__cost'),
                     total_cost=Case(
@@ -141,11 +125,32 @@ class InquiryApiView(viewsets.ViewSet):
                 newest_offer_cost=Subquery(
                     newest_offers.values('total_cost')[:1]
                 ),
-                distance=calculate_distance
+                distance=Case(
+                    When(is_offered=True, then=calculate_distance),
+                    default=Value(None)
+                ),
+                propose_count=Count('proposes')
             ) \
-            .filter(keyword_query, distance__lte=settings.DISTANCE_RADIUS) \
-            .exclude(user_id=self.request.user.id) \
+            .filter(
+                keyword_query,
+                Q(distance__lte=Case(
+                    When(distance__isnull=False, then=settings.DISTANCE_RADIUS)
+                )) | Q(distance__isnull=True)
+            ) \
             .order_by('distance', '-create_at')
+
+    # My own inquiries
+    def _instance(self, is_update=False):
+        try:
+            if is_update:
+                return self._instances().select_for_update() \
+                    .get(uuid=self._uuid)
+            else:
+                return self._instances().get(uuid=self._uuid)
+        except ObjectDoesNotExist:
+            raise NotFound(detail=_("Not found"))
+        except DjangoValidationError as e:
+            raise ValidationError(detail=str(e))
 
     @transaction.atomic()
     def create(self, request, format='json'):
@@ -204,9 +209,10 @@ class InquiryApiView(viewsets.ViewSet):
         keyword = params.get('keyword', None)
 
         if obtain == 'hunt':
-            instances = self._hunt_instances(keyword)
+            instances = self._instances(keyword)
         else:
-            instances = self._instances().filter(user_id=request.user.id)
+            instances = self._instances(
+                keyword).filter(user_id=request.user.id)
 
         paginator = _PAGINATOR.paginate_queryset(instances, request)
         serializer = ListInquirySerializer(paginator, context=self._context,

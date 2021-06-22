@@ -92,6 +92,8 @@ class BaseInquirySerializer(serializers.ModelSerializer):
             return None
 
         newest_offers = Offer.objects \
+            .prefetch_related('propose', 'propose__listing', 'items__inquiry_item') \
+            .select_related('propose') \
             .filter(propose__inquiry_id=instance.id,
                     propose__listing_id=default_listing.id,
                     is_newest=True) \
