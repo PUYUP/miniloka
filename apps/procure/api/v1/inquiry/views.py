@@ -126,7 +126,8 @@ class InquiryApiView(viewsets.ViewSet):
                     newest_offers.values('total_cost')[:1]
                 ),
                 distance=Case(
-                    When(is_offered=True, then=calculate_distance),
+                    When(~Q(user__id=self.request.user.id),
+                         then=calculate_distance),
                     default=Value(None)
                 ),
                 propose_count=Count('proposes')

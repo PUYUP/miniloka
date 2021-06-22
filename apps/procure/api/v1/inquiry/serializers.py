@@ -210,7 +210,7 @@ class RetrieveInquirySerializer(BaseInquirySerializer):
                   'distance',)
 
 
-class ListInquirySerializer(RetrieveInquirySerializer, DynamicFieldsModelSerializer):
+class ListInquirySerializer(RetrieveInquirySerializer):
     class Meta(BaseInquirySerializer.Meta):
         fields = ('uuid', 'links', 'create_at', 'user', 'keyword',
                   'propose_count', 'items', 'is_offered', 'distance',
