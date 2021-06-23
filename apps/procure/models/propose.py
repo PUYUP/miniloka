@@ -100,6 +100,7 @@ class AbstractOfferItem(AbstractCommonField):
     discount = models.IntegerField(default=0)
     quantity = models.IntegerField(default=1)
     description = models.TextField(null=True, blank=True)
+    is_available = models.BooleanField(default=False)
 
     class Meta:
         abstract = True

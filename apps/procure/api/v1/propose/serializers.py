@@ -52,6 +52,7 @@ class _OfferItemSerializer(serializers.Serializer):
                                                 queryset=InquiryItem.objects.all())
     cost = serializers.IntegerField(required=True)
     description = serializers.CharField(required=False, allow_blank=True)
+    is_available = serializers.BooleanField(default=False)
 
 
 class _OfferSerializer(serializers.Serializer):
