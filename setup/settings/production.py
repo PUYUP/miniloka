@@ -70,6 +70,7 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     'http://localhost',
     'http://localhost:8100',
+    'https://app.daftarbelanja.com',
 ]
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
