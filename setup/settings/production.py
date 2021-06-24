@@ -12,7 +12,8 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
     '[::1]',
     '123.100.226.161',
-    'console.miniloka.com'
+    'console.miniloka.com',
+    'app.miniloka.com',
 ]
 
 
