@@ -68,7 +68,7 @@ class ListingApiView(viewsets.ViewSet):
         try:
             if is_update:
                 return self._instances().select_for_update() \
-                    .get(uuid=self._uuid)
+                    .get(uuid=self._uuid, members__is_admin=True)
             else:
                 return self._instances().get(uuid=self._uuid)
         except ObjectDoesNotExist:
@@ -110,7 +110,7 @@ class ListingApiView(viewsets.ViewSet):
 
     @transaction.atomic()
     def partial_update(self, request, uuid=None, format='json'):
-        instance = self._instance()
+        instance = self._instance(is_update=True)
         serializer = CreateListingSerializer(instance, partial=True, many=False,
                                              data=request.data, context=self._context)
         if serializer.is_valid(raise_exception=True):
@@ -130,8 +130,7 @@ class ListingApiView(viewsets.ViewSet):
     @transaction.atomic()
     def delete(self, request, uuid=None):
         instances = self._instances() \
-            .filter(uuid=self._uuid, members__user_id=request.user.id,
-                    members__is_admin=True)
+            .filter(uuid=self._uuid, members__is_admin=True)
 
         if instances.exists():
             instances.delete()
@@ -159,7 +158,7 @@ class ListingApiView(viewsets.ViewSet):
                 "longitude": "decimal"                      [required]
             }
         """
-        instance = self._instance()
+        instance = self._instance(is_update=True)
         serializer = UpdateListingLocationSerializer(instance.location,
                                                      data=request.data,
                                                      context=self._context)

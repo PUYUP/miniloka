@@ -149,7 +149,7 @@ class InquiryApiView(viewsets.ViewSet):
         try:
             if is_update:
                 return self._instances().select_for_update() \
-                    .get(uuid=self._uuid)
+                    .get(uuid=self._uuid, user_id=self.request.user.id)
             else:
                 return self._instances().get(uuid=self._uuid)
         except ObjectDoesNotExist:
@@ -195,7 +195,8 @@ class InquiryApiView(viewsets.ViewSet):
 
     @transaction.atomic
     def destroy(self, request, uuid=None, format='json'):
-        instance = self._instances().filter(uuid=uuid)
+        instance = self._instances() \
+            .filter(uuid=uuid, user_id=request.user.id)
 
         try:
             instance.delete()

@@ -51,8 +51,7 @@ class OfferApiView(viewsets.ViewSet):
     def _instance(self, is_update=False):
         try:
             if is_update:
-                return self._instances() \
-                    .select_for_update() \
+                return self._instances() .select_for_update() \
                     .get(uuid=self._uuid)
             else:
                 return self._instances() \
