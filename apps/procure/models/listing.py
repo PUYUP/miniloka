@@ -43,6 +43,9 @@ class AbstractListingState(AbstractCommonField):
         verbose_name = _("Listing Status")
         verbose_name_plural = _("Listing Status")
 
+    def __str__(self) -> str:
+        return self.get_status_display()
+
 
 class ListingMemberManager(models.QuerySet):
     def _get_defaults(self):
