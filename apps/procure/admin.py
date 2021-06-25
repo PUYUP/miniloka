@@ -83,7 +83,7 @@ class ListingStateInline(admin.StackedInline):
 
 class ListingExtend(admin.ModelAdmin):
     model = Listing
-    list_display = ('label', 'state',)
+    list_display = ('label', 'state', 'location',)
     inlines = [ListingOpeningInline, ListingMemberInline,
                ListingLocationInline, ListingStateInline, ]
 

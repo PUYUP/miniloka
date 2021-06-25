@@ -105,7 +105,7 @@ class AbstractOfferItem(AbstractCommonField):
     class Meta:
         abstract = True
         app_label = 'procure'
-        ordering = ['-create_at']
+        ordering = ['create_at']
         verbose_name = _("Offer Item")
         verbose_name_plural = _("Offer Items")
 

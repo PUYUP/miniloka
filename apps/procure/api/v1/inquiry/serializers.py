@@ -7,7 +7,6 @@ from django.urls import reverse
 from rest_framework import serializers
 
 from utils.generals import get_model
-from apps.procure.api.utils import DynamicFieldsModelSerializer
 from ..offer.serializers import RetrieveOfferSerializer
 
 Offer = get_model('procure', 'Offer')
