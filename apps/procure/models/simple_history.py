@@ -17,6 +17,8 @@ ListingOpening = get_model('procure', 'ListingOpening')
 ListingGallery = get_model('procure', 'ListingGallery')
 ListingAttachment = get_model('procure', 'ListingAttachment')
 ListingLocation = get_model('procure', 'ListingLocation')
+ListingProduct = get_model('procure', 'ListingProduct')
+ListingProductAttachment = get_model('procure', 'ListingProductAttachment')
 
 Propose = get_model('procure', 'Propose')
 Offer = get_model('procure', 'Offer')
@@ -56,6 +58,12 @@ register(ListingAttachment, app=__package__,
          history_id_field=models.UUIDField(default=uuid.uuid4))
 
 register(ListingLocation, app=__package__,
+         history_id_field=models.UUIDField(default=uuid.uuid4))
+
+register(ListingProduct, app=__package__,
+         history_id_field=models.UUIDField(default=uuid.uuid4))
+
+register(ListingProductAttachment, app=__package__,
          history_id_field=models.UUIDField(default=uuid.uuid4))
 
 # OFFER

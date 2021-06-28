@@ -14,8 +14,8 @@ class OfferItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OfferItem
-        fields = ('uuid', 'create_at', 'cost', 'discount',
-                  'description', 'is_available', 'inquiry_item',)
+        fields = ('uuid', 'inquiry_item', 'create_at', 'cost', 'discount',
+                  'description', 'is_available', 'is_additional',)
 
 
 class BaseOfferSerializer(serializers.ModelSerializer):

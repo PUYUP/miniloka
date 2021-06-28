@@ -44,7 +44,7 @@ class AbstractOffer(AbstractCommonField):
                              related_name='offers')
 
     # if cost filled indicate as whole offer
-    cost = models.BigIntegerField(null=True, blank=True)
+    cost = models.BigIntegerField(default=0, blank=True)
     discount = models.IntegerField(default=0)
     description = models.TextField(null=True, blank=True)
 
@@ -93,14 +93,23 @@ class AbstractOfferItem(AbstractCommonField):
 
     offer = models.ForeignKey('procure.Offer', on_delete=models.CASCADE,
                               related_name='items')
+
+    # if null: is_additional must True
     inquiry_item = models.ForeignKey('procure.InquiryItem', on_delete=models.CASCADE,
                                      related_name='items', null=True, blank=True)
 
-    cost = models.BigIntegerField()
+    # product from user listing
+    product = models.ForeignKey('procure.ListingProduct', on_delete=models.CASCADE,
+                                related_name='items', null=True, blank=True)
+
+    label = models.CharField(max_length=255, null=True, blank=True)
+    cost = models.BigIntegerField(default=0)
     discount = models.IntegerField(default=0)
     quantity = models.IntegerField(default=1)
     description = models.TextField(null=True, blank=True)
+
     is_available = models.BooleanField(default=False)
+    is_additional = models.BooleanField(default=False, null=True)
 
     class Meta:
         abstract = True
@@ -111,6 +120,12 @@ class AbstractOfferItem(AbstractCommonField):
 
     def __str__(self) -> str:
         return str(self.cost)
+
+    def save(self, *args, **kwargs):
+        if self.inquiry_item:
+            self.label = self.inquiry_item.label
+
+        return super().save(*args, **kwargs)
 
 
 class AbstractNegotiation(AbstractCommonField):

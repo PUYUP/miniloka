@@ -41,6 +41,11 @@ class AbstractInquiry(AbstractCommonField):
 class AbstractInquiryItem(AbstractCommonField):
     inquiry = models.ForeignKey('procure.Inquiry', related_name='items',
                                 on_delete=models.CASCADE)
+    listing = models.ForeignKey('procure.Listing', related_name='listings',
+                                on_delete=models.CASCADE, null=True, blank=True)
+    product = models.ForeignKey('procure.ListingProduct', related_name='products',
+                                on_delete=models.CASCADE, null=True, blank=True)
+
     label = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)
     quantity = models.IntegerField(default=1)

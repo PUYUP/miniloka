@@ -162,6 +162,52 @@ class AbstractListingAttachment(AbstractCommonField):
         super().save(*args, **kwargs)
 
 
+class AbstractListingProduct(AbstractCommonField):
+    listing = models.ForeignKey('procure.Listing', on_delete=models.CASCADE,
+                                related_name='products')
+
+    label = models.CharField(max_length=255)
+    description = models.TextField(null=True, blank=True)
+
+    class Meta:
+        abstract = True
+        app_label = 'procure'
+        verbose_name = _("Listing Product")
+        verbose_name_plural = _("Listing Products")
+
+    def __str__(self) -> str:
+        return self.label
+
+
+class AbstractListingProductAttachment(AbstractCommonField):
+    listing = models.ForeignKey('procure.ListingProduct', on_delete=models.CASCADE,
+                                related_name='attachments')
+
+    file = models.FileField(upload_to='product/%Y/%m/%d')
+    filename = models.CharField(max_length=255, editable=False)
+    filepath = models.CharField(max_length=255, editable=False)
+    filesize = models.IntegerField(editable=False)
+    filemime = models.CharField(max_length=255, editable=False)
+
+    label = models.CharField(max_length=255, null=True, blank=True)
+    caption = models.TextField(null=True, blank=True)
+
+    class Meta:
+        abstract = True
+        app_label = 'procure'
+        verbose_name = _("Listing Product Attachment")
+        verbose_name_plural = _("Listing Product Attachments")
+
+    def __str__(self) -> str:
+        return self.label
+
+    def save(self, *args, **kwargs):
+        if not self.label:
+            base = os.path.basename(self.file.name)
+            self.label = base
+        super().save(*args, **kwargs)
+
+
 class AbstractListingLocation(AbstractCommonField):
     listing = models.OneToOneField('procure.Listing', related_name='location',
                                    on_delete=models.CASCADE)

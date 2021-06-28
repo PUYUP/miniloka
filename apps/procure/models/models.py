@@ -104,7 +104,25 @@ if not is_model_registered('procure', 'ListingLocation'):
     __all__.append('ListingLocation')
 
 
-# 12
+# 13
+if not is_model_registered('procure', 'ListingProduct'):
+    class ListingProduct(AbstractListingProduct):
+        class Meta(AbstractListingProduct.Meta):
+            pass
+
+    __all__.append('ListingProduct')
+
+
+# 14
+if not is_model_registered('procure', 'ListingProductAttachment'):
+    class ListingProductAttachment(AbstractListingProductAttachment):
+        class Meta(AbstractListingProductAttachment.Meta):
+            pass
+
+    __all__.append('ListingProductAttachment')
+
+
+# 15
 if not is_model_registered('procure', 'Propose'):
     class Propose(AbstractPropose):
         class Meta(AbstractPropose.Meta):
@@ -113,7 +131,7 @@ if not is_model_registered('procure', 'Propose'):
     __all__.append('Propose')
 
 
-# 13
+# 16
 if not is_model_registered('procure', 'Offer'):
     class Offer(AbstractOffer):
         class Meta(AbstractOffer.Meta):
@@ -122,7 +140,7 @@ if not is_model_registered('procure', 'Offer'):
     __all__.append('Offer')
 
 
-# 14
+# 17
 if not is_model_registered('procure', 'OfferItem'):
     class OfferItem(AbstractOfferItem):
         class Meta(AbstractOfferItem.Meta):
@@ -131,7 +149,7 @@ if not is_model_registered('procure', 'OfferItem'):
     __all__.append('OfferItem')
 
 
-# 15
+# 18
 if not is_model_registered('procure', 'Negotiation'):
     class Negotiation(AbstractNegotiation):
         class Meta(AbstractNegotiation.Meta):
@@ -140,7 +158,7 @@ if not is_model_registered('procure', 'Negotiation'):
     __all__.append('Negotiation')
 
 
-# 16
+# 19
 if not is_model_registered('procure', 'NegotiationText'):
     class NegotiationText(AbstractNegotiationText):
         class Meta(AbstractNegotiationText.Meta):
@@ -149,7 +167,7 @@ if not is_model_registered('procure', 'NegotiationText'):
     __all__.append('NegotiationText')
 
 
-# 17
+# 20
 if not is_model_registered('procure', 'NegotiationAttachment'):
     class NegotiationAttachment(AbstractNegotiationAttachment):
         class Meta(AbstractNegotiationAttachment.Meta):

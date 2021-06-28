@@ -48,8 +48,9 @@ class _Coordinate(serializers.Serializer):
 
 
 class _OfferItemSerializer(serializers.Serializer):
-    inquiry_item = serializers.SlugRelatedField(slug_field='uuid',
+    inquiry_item = serializers.SlugRelatedField(slug_field='uuid', required=False,
                                                 queryset=InquiryItem.objects.all())
+    label = serializers.CharField(required=False)
     cost = serializers.IntegerField(required=True)
     description = serializers.CharField(required=False, allow_blank=True)
     is_available = serializers.BooleanField(default=False)
@@ -133,7 +134,7 @@ class CreateProposeSerializer(BaseProposeSerializer):
 
         # Get unlisted in offer_items inquiry items
         inquiry_items_uuid = [
-            item.get('inquiry_item').uuid for item in offer_items_data
+            item.get('inquiry_item').uuid if item.get('inquiry_item') else None for item in offer_items_data
         ]
 
         inquiry_items_unlisted = instance.inquiry.items \

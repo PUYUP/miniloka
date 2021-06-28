@@ -17,6 +17,8 @@ ListingGallery = get_model('procure', 'ListingGallery')
 ListingAttachment = get_model('procure', 'ListingAttachment')
 ListingLocation = get_model('procure', 'ListingLocation')
 ListingState = get_model('procure', 'ListingState')
+ListingProduct = get_model('procure', 'ListingProduct')
+ListingProductAttachment = get_model('procure', 'ListingProductAttachment')
 
 Propose = get_model('procure', 'Propose')
 Offer = get_model('procure', 'Offer')
@@ -97,6 +99,8 @@ admin.site.register(Listing, ListingExtend)
 admin.site.register(ListingMember, ListingMemberExtend)
 admin.site.register(ListingGallery)
 admin.site.register(ListingAttachment)
+admin.site.register(ListingProduct)
+admin.site.register(ListingProductAttachment)
 
 
 # OFFER
@@ -120,6 +124,7 @@ class OfferExtend(admin.ModelAdmin):
 
 admin.site.register(Propose, ProposeExtend)
 admin.site.register(Offer, OfferExtend)
+admin.site.register(OfferItem)
 
 
 # NEGOTIATION
