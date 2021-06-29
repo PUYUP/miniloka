@@ -17,15 +17,18 @@ Propose = get_model('procure', 'Propose')
 
 
 class InquiryListProposeSerializer(serializers.ModelSerializer):
-    newest_offer_cost = serializers.IntegerField(read_only=True,
-                                                 required=False)
+    newest_offer_cost = serializers.IntegerField(
+        read_only=True, required=False)
+    newest_item_count = serializers.IntegerField(read_only=True)
+    newest_item_additional_count = serializers.IntegerField(read_only=True)
     offer_count = serializers.IntegerField(read_only=True, required=False)
     distance = serializers.FloatField(read_only=True, required=False)
 
     class Meta:
         model = Propose
         fields = ('uuid', 'create_at', 'listing', 'distance',
-                  'newest_offer_cost', 'offer_count',)
+                  'newest_offer_cost', 'offer_count',
+                  'newest_item_count', 'newest_item_additional_count',)
         depth = 1
 
 
@@ -48,12 +51,14 @@ class BaseInquirySerializer(serializers.ModelSerializer):
     links = serializers.SerializerMethodField()
     is_offered = serializers.BooleanField(default=False, required=False)
     newest_offer = serializers.SerializerMethodField()
+    newest_offer_cost = serializers.IntegerField(required=False)
+    newest_item_count = serializers.IntegerField(read_only=True)
+    newest_item_additional_count = serializers.IntegerField(read_only=True)
     propose_count = serializers.IntegerField(read_only=True)
     user = serializers.HiddenField(default=serializers.CurrentUserDefault())
     items = InquiryItemSerializer(many=True)
     location = InquiryLocationSerializer()
     distance = serializers.FloatField(required=False)
-    newest_offer_cost = serializers.IntegerField(required=False)
 
     class Meta:
         model = Inquiry
@@ -205,12 +210,13 @@ class RetrieveInquirySerializer(BaseInquirySerializer):
 
     class Meta(BaseInquirySerializer.Meta):
         fields = ('uuid', 'user', 'links', 'create_at', 'keyword',
-                  'propose_count', 'items', 'location', 'newest_offer',
-                  'distance',)
+                  'propose_count', 'items', 'newest_offer',
+                  'newest_offer_cost', 'location', 'distance',
+                  'newest_item_additional_count',)
 
 
-class ListInquirySerializer(RetrieveInquirySerializer):
+class ListInquirySerializer(BaseInquirySerializer):
     class Meta(BaseInquirySerializer.Meta):
-        fields = ('uuid', 'links', 'create_at', 'user', 'keyword',
+        fields = ('uuid', 'user', 'links', 'create_at', 'keyword',
                   'propose_count', 'items', 'is_offered', 'distance',
-                  'newest_offer_cost',)
+                  'newest_offer_cost', 'newest_item_additional_count',)

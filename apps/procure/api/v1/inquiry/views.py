@@ -106,6 +106,10 @@ class InquiryApiView(viewsets.ViewSet):
             .prefetch_related('propose', 'items') \
             .select_related('propose', 'items') \
             .annotate(
+                item_count=Count('items'),
+                item_additional_count=Count(
+                    'items', filter=Q(items__is_additional=True)
+                ),
                 total_item_cost=Sum('items__cost'),
                 total_cost=Case(
                     When(cost__lte=0, then=F('total_item_cost')),
@@ -123,6 +127,12 @@ class InquiryApiView(viewsets.ViewSet):
         return self._queryset \
             .annotate(
                 is_offered=Exists(newest_offers),
+                newest_item_count=Subquery(
+                    newest_offers.values('item_count')[:1]
+                ),
+                newest_item_additional_count=Subquery(
+                    newest_offers.values('item_additional_count')[:1]
+                ),
                 newest_offer_cost=Case(
                     When(is_offered=True, then=Subquery(
                         newest_offers.values('total_cost')[:1])
@@ -267,6 +277,10 @@ class InquiryApiView(viewsets.ViewSet):
 
         newest_offers = Offer.objects \
             .annotate(
+                item_count=Count('items'),
+                item_additional_count=Count(
+                    'items', filter=Q(items__is_additional=True)
+                ),
                 total_item_cost=Sum('items__cost'),
                 total_cost=Case(
                     When(cost__lte=0, then=F('total_item_cost')),
@@ -286,6 +300,12 @@ class InquiryApiView(viewsets.ViewSet):
             .prefetch_related('listing', 'inquiry', 'user', 'offers') \
             .select_related('listing', 'inquiry', 'user') \
             .annotate(
+                newest_item_count=Subquery(
+                    newest_offers.values('item_count')[:1]
+                ),
+                newest_item_additional_count=Subquery(
+                    newest_offers.values('item_additional_count')[:1]
+                ),
                 newest_offer_cost=Subquery(
                     newest_offers.values('total_cost')[:1]
                 ),

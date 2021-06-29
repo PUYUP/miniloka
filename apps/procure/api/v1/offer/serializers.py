@@ -9,12 +9,9 @@ OfferItem = get_model('procure', 'OfferItem')
 
 
 class OfferItemSerializer(serializers.ModelSerializer):
-    inquiry_item = serializers.CharField(source='inquiry_item.label',
-                                         read_only=True)
-
     class Meta:
         model = OfferItem
-        fields = ('uuid', 'inquiry_item', 'create_at', 'cost', 'discount',
+        fields = ('uuid', 'inquiry_item', 'label', 'create_at', 'cost', 'discount',
                   'description', 'is_available', 'is_additional',)
 
 

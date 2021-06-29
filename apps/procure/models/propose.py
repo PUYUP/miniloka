@@ -119,7 +119,7 @@ class AbstractOfferItem(AbstractCommonField):
         verbose_name_plural = _("Offer Items")
 
     def __str__(self) -> str:
-        return str(self.cost)
+        return self.label or str(self.cost)
 
     def save(self, *args, **kwargs):
         if self.inquiry_item:

@@ -150,6 +150,10 @@ class CreateProposeSerializer(BaseProposeSerializer):
         # prepare bulk create
         bulk_create_offer_items = []
         for item in offer_items_data:
+            inquiry_item = item.get('inquiry_item', None)
+            if inquiry_item is None:
+                item.update({'is_additional': True})
+
             item_cost = item.pop('cost', 0)
             cost = 0 if offer_cost > 0 else item_cost
             item_obj = OfferItem(offer=offer_instance, user=self._request.user,
