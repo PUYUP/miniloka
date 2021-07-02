@@ -28,8 +28,11 @@ class RootApiView(APIView):
                                     format=format, current_app='procure'),
                 'offers': reverse('procure_api:offer-list', request=request,
                                   format=format, current_app='procure'),
-
                 'listings': reverse('procure_api:listing-list', request=request,
+                                    format=format, current_app='procure'),
+                'orders': reverse('procure_api:order-list', request=request,
+                                  format=format, current_app='procure'),
+                'products': reverse('procure_api:product-list', request=request,
                                     format=format, current_app='procure'),
             }
         })

@@ -168,7 +168,7 @@ class InquiryApiView(viewsets.ViewSet):
             raise ValidationError(detail=str(e))
 
     @transaction.atomic()
-    def create(self, request, format='json'):
+    def create(self, request, format=None):
         serializer = CreateInquirySerializer(data=request.data,
                                              context=self._context)
         if serializer.is_valid(raise_exception=True):
@@ -183,7 +183,7 @@ class InquiryApiView(viewsets.ViewSet):
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)
 
     @transaction.atomic()
-    def partial_update(self, request, uuid=None, format='json'):
+    def partial_update(self, request, uuid=None, format=None):
         instance = self._instance(is_update=True)
 
         # can't edit if has proposes
@@ -204,7 +204,7 @@ class InquiryApiView(viewsets.ViewSet):
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)
 
     @transaction.atomic
-    def destroy(self, request, uuid=None, format='json'):
+    def destroy(self, request, uuid=None, format=None):
         instance = self._instances() \
             .filter(uuid=uuid, user_id=request.user.id)
 
@@ -219,7 +219,7 @@ class InquiryApiView(viewsets.ViewSet):
     All inquiries
     """
 
-    def list(self, request, format='json'):
+    def list(self, request, format=None):
         params = request.query_params
         obtain = params.get('obtain', None)
         keyword = params.get('keyword', None)
@@ -241,7 +241,7 @@ class InquiryApiView(viewsets.ViewSet):
     A single
     """
 
-    def retrieve(self, request, uuid=None, format='json'):
+    def retrieve(self, request, uuid=None, format=None):
         instance = self._instance()
         serializer = RetrieveInquirySerializer(instance, many=False,
                                                context=self._context)
@@ -253,7 +253,7 @@ class InquiryApiView(viewsets.ViewSet):
 
     @action(methods=['GET'], detail=True, url_name='proposes', url_path='proposes',
             permission_classes=(IsAuthenticated,))
-    def proposes(self, request, uuid=None, format='json'):
+    def proposes(self, request, uuid=None, format=None):
         """
         Return if user is:
         - inquiry creator
@@ -340,7 +340,7 @@ class InquiryApiView(viewsets.ViewSet):
 
     @action(methods=['GET'], detail=True, url_name='offers', url_path='offers',
             permission_classes=(IsAuthenticated,))
-    def offers(self, request, uuid=None, format='json'):
+    def offers(self, request, uuid=None, format=None):
         """
         Return if user is:
         - inquiry creator

@@ -24,6 +24,9 @@ Propose = get_model('procure', 'Propose')
 Offer = get_model('procure', 'Offer')
 OfferItem = get_model('procure', 'OfferItem')
 
+Order = get_model('procure', 'Order')
+OrderItem = get_model('procure', 'OrderItem')
+
 # NEED
 register(Inquiry, app=__package__,
          history_id_field=models.UUIDField(default=uuid.uuid4))
@@ -74,4 +77,11 @@ register(Offer, app=__package__,
          history_id_field=models.UUIDField(default=uuid.uuid4))
 
 register(OfferItem, app=__package__,
+         history_id_field=models.UUIDField(default=uuid.uuid4))
+
+# ORDER
+register(Order, app=__package__,
+         history_id_field=models.UUIDField(default=uuid.uuid4))
+
+register(OrderItem, app=__package__,
          history_id_field=models.UUIDField(default=uuid.uuid4))

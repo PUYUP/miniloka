@@ -1,3 +1,5 @@
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models.expressions import Exists, OuterRef
 from apps.procure.api.v1.listing.serializers import ListingLocation
 from django.db import transaction
 from django.db.models import Sum
@@ -15,6 +17,7 @@ Propose = get_model('procure', 'Propose')
 Offer = get_model('procure', 'Offer')
 OfferItem = get_model('procure', 'OfferItem')
 Listing = get_model('procure', 'Listing')
+Order = get_model('procure', 'Order')
 
 
 class BaseProposeSerializer(serializers.ModelSerializer):
@@ -25,7 +28,9 @@ class BaseProposeSerializer(serializers.ModelSerializer):
         self._request = self._context.get('request')
 
     def get_links(self, instance):
-        return {
+        latest_offer = instance.latest_offer()
+
+        ret = {
             'retrieve': self._request.build_absolute_uri(
                 reverse('procure_api:propose-detail',
                         kwargs={'uuid': instance.uuid})
@@ -33,8 +38,20 @@ class BaseProposeSerializer(serializers.ModelSerializer):
             'offer': self._request.build_absolute_uri(
                 reverse('procure_api:propose-offers',
                         kwargs={'uuid': instance.uuid})
-            )
+            ),
         }
+
+        if latest_offer and hasattr(latest_offer, 'order'):
+            order = getattr(latest_offer, 'order')
+            if order:
+                uri = self._request.build_absolute_uri(
+                    reverse(
+                        'procure_api:order-detail',
+                        kwargs={'uuid': order.uuid}
+                    )
+                )
+                ret.update({'order': uri})
+        return ret
 
 
 """
@@ -83,6 +100,28 @@ class CreateProposeSerializer(BaseProposeSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._request = self.context.get('request')
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+
+        if not self.instance:
+            listing = data.get('listing')
+            inquiry = data.get('inquiry')
+
+            try:
+                propose = Propose.objects.get(listing=listing, inquiry=inquiry)
+            except ObjectDoesNotExist:
+                propose = None
+
+            if propose:
+                latest_offer = propose.latest_offer()
+                order = getattr(latest_offer, 'order', None)
+
+                if order:
+                    raise serializers.ValidationError({
+                        'detail': _("Konsumen telah menerima tawaran. Tidak bisa dirubah.")
+                    })
+        return data
 
     def to_internal_value(self, data):
         data = super().to_internal_value(data)
@@ -195,23 +234,28 @@ class _ProposeListingSerializer(serializers.ModelSerializer):
 
 class RetrieveProposeSerializer(BaseProposeSerializer):
     newest_offer = serializers.SerializerMethodField()
-    listing = _ProposeListingSerializer(many=False, required=False)
     inquiry = serializers.UUIDField(source='inquiry.uuid', required=False)
+    listing = _ProposeListingSerializer(many=False, required=False)
 
     class Meta:
         model = Propose
         fields = ('uuid', 'create_at', 'update_at',
-                  'links', 'newest_offer', 'listing', 'inquiry',)
+                  'links', 'newest_offer', 'listing',
+                  'inquiry',)
         depth = 1
 
     def get_newest_offer(self, instance):
         """
         Get newest offer from propose
         """
+        order = Order.objects.filter(offer_id=OuterRef('id'))
         newest_offer = Offer.objects \
             .prefetch_related('items', 'items__inquiry_item', 'propose', 'user') \
             .select_related('propose', 'user') \
-            .annotate(total_item_cost=Sum('items__cost')) \
+            .annotate(
+                is_ordered=Exists(order),
+                total_item_cost=Sum('items__cost')
+            ) \
             .filter(propose_id=instance.id, is_newest=True) \
             .order_by('-create_at') \
             .first()

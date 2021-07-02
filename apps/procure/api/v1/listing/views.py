@@ -22,6 +22,7 @@ from .serializers import (
     RetrieveListingLocationSerializer,
     UpdateListingLocationSerializer
 )
+from ..product.serializers import CreateListingProductSerializer, ListListingProductSerializer, ListingProduct, RetrieveListingProductSerializer
 
 Listing = get_model('procure', 'Listing')
 ListingMember = get_model('procure', 'ListingMember')
@@ -64,6 +65,9 @@ class ListingApiView(viewsets.ViewSet):
         return self._queryset.filter(members__user_id=self.request.user.id) \
             .order_by('-create_at')
 
+    def _instances_public(self):
+        return self._queryset.order_by('-create_at')
+
     def _instance(self, is_update=False):
         try:
             if is_update:
@@ -76,22 +80,28 @@ class ListingApiView(viewsets.ViewSet):
         except DjangoValidationError as e:
             raise ValidationError(detail=str(e))
 
-    def list(self, request, format='json'):
-        instances = self._instances()
+    def list(self, request, format=None):
+        role = request.query_params.get('role', None)
+
+        if role == 'public':
+            instances = self._instances_public()
+        else:
+            instances = self._instances()
+
         paginator = _PAGINATOR.paginate_queryset(instances, request)
         serializer = ListListingSerializer(paginator, context=self._context,
                                            many=True)
         results = build_result_pagination(self, _PAGINATOR, serializer)
         return Response(results, status=response_status.HTTP_200_OK)
 
-    def retrieve(self, request, uuid=None, format='json'):
+    def retrieve(self, request, uuid=None, format=None):
         instance = self._instance()
         serializer = RetrieveListingSerializer(instance, many=False,
                                                context=self._context)
         return Response(serializer.data, status=response_status.HTTP_200_OK)
 
     @transaction.atomic()
-    def create(self, request, format='json'):
+    def create(self, request, format=None):
         serializer = CreateListingSerializer(data=request.data,
                                              context=self._context)
         if serializer.is_valid(raise_exception=True):
@@ -109,7 +119,7 @@ class ListingApiView(viewsets.ViewSet):
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)
 
     @transaction.atomic()
-    def partial_update(self, request, uuid=None, format='json'):
+    def partial_update(self, request, uuid=None, format=None):
         instance = self._instance(is_update=True)
         serializer = CreateListingSerializer(instance, partial=True, many=False,
                                              data=request.data, context=self._context)
@@ -143,7 +153,7 @@ class ListingApiView(viewsets.ViewSet):
     # LOCATION
     @transaction.atomic
     @action(methods=['patch'], detail=True, url_path='location', url_name='location')
-    def location(self, request, uuid=None, format='json'):
+    def location(self, request, uuid=None, format=None):
         """
         Format;
         ---------
@@ -176,7 +186,7 @@ class ListingApiView(viewsets.ViewSet):
     # OPENINGS
     @transaction.atomic
     @action(methods=['put'], detail=True, url_path='openings', url_name='opening')
-    def openings(self, request, uuid=None, format='json'):
+    def openings(self, request, uuid=None, format=None):
         """
         PUT
         -----------
@@ -214,7 +224,7 @@ class ListingApiView(viewsets.ViewSet):
     # MEMBERS
     @transaction.atomic
     @action(methods=['post'], detail=True, url_path='members', url_name='member')
-    def members(self, request, uuid=None, format='json'):
+    def members(self, request, uuid=None, format=None):
         """
         POST
         ------------
@@ -246,13 +256,14 @@ class ListingApiView(viewsets.ViewSet):
     @transaction.atomic
     @action(methods=['patch'], detail=True,
             url_path='members/(?P<member_uuid>[^/.]+)', url_name='member_update')
-    def members_update(self, request, uuid=None, member_uuid=None, format='json'):
+    def members_update(self, request, uuid=None, member_uuid=None, format=None):
         pass
 
+    # SET LISTING AS DEFAULT FOR CURRENT USER
     @transaction.atomic
     @action(methods=['post'], detail=True,
             url_path='set-default', url_name='set_default')
-    def set_default(self, request, uuid=None, format='json'):
+    def set_default(self, request, uuid=None, format=None):
         user_id = request.user.id
 
         try:
@@ -264,3 +275,22 @@ class ListingApiView(viewsets.ViewSet):
             pass
 
         return Response({'detail': _("Success")}, status=response_status.HTTP_200_OK)
+
+    # LIST PRODUCTS
+    @transaction.atomic
+    @action(methods=['get'], detail=True,
+            url_path='products', url_name='product')
+    def product(self, request, uuid=None, format=None):
+        # list products
+        if request.method == 'GET':
+            instances = ListingProduct.objects \
+                .prefetch_related('listing') \
+                .select_related('listing') \
+                .filter(listing__uuid=uuid) \
+                .order_by('-create_at')
+
+            paginator = _PAGINATOR.paginate_queryset(instances, request)
+            serializer = ListListingProductSerializer(paginator, context=self._context,
+                                                      many=True)
+            results = build_result_pagination(self, _PAGINATOR, serializer)
+            return Response(results, status=response_status.HTTP_200_OK)

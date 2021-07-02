@@ -1,6 +1,7 @@
 from .inquiry import *
 from .listing import *
 from .propose import *
+from .order import *
 from utils.generals import is_model_registered
 
 __all__ = list()
@@ -174,3 +175,21 @@ if not is_model_registered('procure', 'NegotiationAttachment'):
             pass
 
     __all__.append('NegotiationAttachment')
+
+
+# 21
+if not is_model_registered('procure', 'Order'):
+    class Order(AbstractOrder):
+        class Meta(AbstractOrder.Meta):
+            pass
+
+    __all__.append('Order')
+
+
+# 22
+if not is_model_registered('procure', 'OrderItem'):
+    class OrderItem(AbstractOrderItem):
+        class Meta(AbstractOrderItem.Meta):
+            pass
+
+    __all__.append('OrderItem')

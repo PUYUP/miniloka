@@ -24,7 +24,7 @@ class ViewSetGetObjMixin(ViewSet):
 
 class ViewSetDestroyObjMixin(ViewSet):
     @transaction.atomic
-    def destroy(self, request, uuid=None, format='json'):
+    def destroy(self, request, uuid=None, format=None):
         instance = self._get_instance()
 
         try:

@@ -1,14 +1,6 @@
 from django.db import transaction, IntegrityError
-from django.db.models.functions import ACos, Cos, Sin, Radians
-from django.db.models import (
-    Q, F, Sum, IntegerField, Case, When, Value, BooleanField,
-    FloatField, Count
-)
-from django.db.models.expressions import OuterRef, Subquery
-from django.db.models.functions import Coalesce
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import (
-    FieldError,
     ObjectDoesNotExist,
     ValidationError as DjangoValidationError
 )
@@ -105,7 +97,7 @@ class ProposeApiView(ViewSetDestroyObjMixin, viewsets.ViewSet):
         self._uuid = None
 
         self._queryset = Propose.objects \
-            .prefetch_related('user', 'listing', 'inquiry',) \
+            .prefetch_related('user', 'listing', 'inquiry') \
             .select_related('user', 'listing', 'inquiry',)
 
     def dispatch(self, request, *args, **kwargs):
@@ -113,7 +105,7 @@ class ProposeApiView(ViewSetDestroyObjMixin, viewsets.ViewSet):
         self._context.update({'request': request})
         return super().dispatch(request, *args, **kwargs)
 
-    def _instances(self, order_param=dict()):
+    def _instances(self):
         return self._queryset \
             .filter(inquiry__user_id=self.request.user.id)
 
@@ -131,7 +123,7 @@ class ProposeApiView(ViewSetDestroyObjMixin, viewsets.ViewSet):
             raise ValidationError(detail=str(e))
 
     @transaction.atomic()
-    def create(self, request, format='json'):
+    def create(self, request, format=None):
         serializer = CreateProposeSerializer(data=request.data,
                                              context=self._context)
         if serializer.is_valid(raise_exception=True):
@@ -155,7 +147,7 @@ class ProposeApiView(ViewSetDestroyObjMixin, viewsets.ViewSet):
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)
 
     @transaction.atomic()
-    def partial_update(self, request, uuid=None, format='json'):
+    def partial_update(self, request, uuid=None, format=None):
         instance = self._instance()
         serializer = CreateProposeSerializer(instance, partial=True, many=False,
                                              data=request.data, context=self._context)
@@ -172,21 +164,21 @@ class ProposeApiView(ViewSetDestroyObjMixin, viewsets.ViewSet):
     All proposes
     """
 
-    def list(self, request, format='json'):
+    def list(self, request, format=None):
         params = {k: v for k, v in request.query_params.items() if v}
         inquiry_uuid = params.get('inquiry_uuid', None)
 
-        order_param = dict()
-        order = params.get('order', None)
-        order_list = order.split(',') if order else list()
-        for query in order_list:
+        filter_param = dict()
+        filter = params.get('filter', None)
+        filter_list = filter.split(',') if filter else list()
+        for query in filter_list:
             query_matcher = query.split(' ') or query.split('+')
             try:
-                order_param.update({query_matcher[0]: query_matcher[1]})
+                filter_param.update({query_matcher[0]: query_matcher[1]})
             except:
                 pass
 
-        instances = self._instances(order_param=order_param)
+        instances = self._instances()
         if inquiry_uuid:
             try:
                 instances = instances.filter(inquiry__uuid=inquiry_uuid)
@@ -203,7 +195,7 @@ class ProposeApiView(ViewSetDestroyObjMixin, viewsets.ViewSet):
     A single
     """
 
-    def retrieve(self, request, uuid=None, format='json'):
+    def retrieve(self, request, uuid=None, format=None):
         instance = self._instance()
         serializer = RetrieveProposeSerializer(instance, many=False,
                                                context=self._context)
@@ -215,7 +207,7 @@ class ProposeApiView(ViewSetDestroyObjMixin, viewsets.ViewSet):
 
     @action(methods=['GET'], detail=True, url_name='offers', url_path='offers',
             permission_classes=(IsAuthenticated,))
-    def offers(self, request, uuid=None, format='json'):
+    def offers(self, request, uuid=None, format=None):
         offers = Offer.objects \
             .prefetch_related('user', 'propose') \
             .select_related('user', 'propose') \

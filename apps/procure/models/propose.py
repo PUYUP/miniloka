@@ -6,6 +6,7 @@ from django.db.models import Q
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
+from utils.generals import random_string
 from .abstract import AbstractCommonField
 
 
@@ -36,6 +37,11 @@ class AbstractPropose(AbstractCommonField):
     def count_offers(self):
         return self.offers.count()
 
+    def latest_offer(self):
+        if self.pk:
+            return self.offers.latest()
+        return None
+
 
 class AbstractOffer(AbstractCommonField):
     propose = models.ForeignKey('procure.Propose', on_delete=models.CASCADE,
@@ -43,10 +49,10 @@ class AbstractOffer(AbstractCommonField):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
                              related_name='offers')
 
-    # if cost filled indicate as whole offer
     cost = models.BigIntegerField(default=0, blank=True)
     discount = models.IntegerField(default=0)
     description = models.TextField(null=True, blank=True)
+    secret = models.CharField(max_length=15, editable=False)
 
     can_attend = models.BooleanField(default=False)
     can_attend_radius = models.IntegerField(null=True, blank=True)
@@ -79,6 +85,8 @@ class AbstractOffer(AbstractCommonField):
         if old_instances.exists():
             old_instances.update(is_newest=False)
 
+        if not self.pk:
+            self.secret = random_string(6)
         return super().save(*args, **kwargs)
 
 

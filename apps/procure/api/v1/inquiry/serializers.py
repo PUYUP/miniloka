@@ -1,6 +1,7 @@
 import uuid
 
 from django.db import transaction
+from django.db.models.expressions import Exists, OuterRef
 from django.db.utils import IntegrityError
 from django.urls import reverse
 
@@ -8,17 +9,19 @@ from rest_framework import serializers
 
 from utils.generals import get_model
 from ..offer.serializers import RetrieveOfferSerializer
+from ..order.serializers import RetrieveOrderSerializer
 
 Offer = get_model('procure', 'Offer')
 Inquiry = get_model('procure', 'Inquiry')
 InquiryItem = get_model('procure', 'InquiryItem')
 InquiryLocation = get_model('procure', 'InquiryLocation')
 Propose = get_model('procure', 'Propose')
+Order = get_model('procure', 'Order')
 
 
 class InquiryListProposeSerializer(serializers.ModelSerializer):
-    newest_offer_cost = serializers.IntegerField(
-        read_only=True, required=False)
+    newest_offer_cost = serializers.IntegerField(read_only=True,
+                                                 required=False)
     newest_item_count = serializers.IntegerField(read_only=True)
     newest_item_additional_count = serializers.IntegerField(read_only=True)
     offer_count = serializers.IntegerField(read_only=True, required=False)
@@ -95,9 +98,11 @@ class BaseInquirySerializer(serializers.ModelSerializer):
         if not default_listing:
             return None
 
+        order = Order.objects.filter(offer_id=OuterRef('id'))
         newest_offers = Offer.objects \
             .prefetch_related('propose', 'propose__listing', 'items__inquiry_item') \
             .select_related('propose') \
+            .annotate(is_ordered=Exists(order)) \
             .filter(propose__inquiry_id=instance.id,
                     propose__listing_id=default_listing.id,
                     is_newest=True) \

@@ -7,7 +7,7 @@ from django.conf import settings
 from django.utils import timezone
 from taggit.managers import TaggableManager
 
-from apps.procure.models.abstract import AbstractCommonField
+from .abstract import AbstractCommonField
 from .tag import TagItem
 
 
@@ -49,7 +49,7 @@ class AbstractInquiryItem(AbstractCommonField):
     label = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)
     quantity = models.IntegerField(default=1)
-    order = models.IntegerField(default=1)
+    position = models.IntegerField(default=1)
 
     class Meta:
         abstract = True

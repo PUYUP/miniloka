@@ -61,7 +61,7 @@ class OfferApiView(viewsets.ViewSet):
         except DjangoValidationError as e:
             raise ValidationError(detail=str(e))
 
-    def list(self, request, format='json'):
+    def list(self, request, format=None):
         instances = self._instances()
         paginator = _PAGINATOR.paginate_queryset(instances, request)
         serializer = ListOfferSerializer(paginator, context=self._context,
@@ -69,7 +69,7 @@ class OfferApiView(viewsets.ViewSet):
         results = build_result_pagination(self, _PAGINATOR, serializer)
         return Response(results, status=response_status.HTTP_200_OK)
 
-    def retrieve(self, request, uuid=None, format='json'):
+    def retrieve(self, request, uuid=None, format=None):
         instance = self._instance()
         serializer = RetrieveOfferSerializer(instance, many=False,
                                              context=self._context)
@@ -77,5 +77,5 @@ class OfferApiView(viewsets.ViewSet):
 
     @action(methods=['GET'], detail=True, url_name='offer-items', url_path='items',
             permission_classes=(IsAuthenticated,))
-    def items(self, request, uuid=None, format='json'):
+    def items(self, request, uuid=None, format=None):
         pass

@@ -27,6 +27,9 @@ Negotiation = get_model('procure', 'Negotiation')
 NegotiationText = get_model('procure', 'NegotiationText')
 NegotiationAttachment = get_model('procure', 'NegotiationAttachment')
 
+Order = get_model('procure', 'Order')
+OrderItem = get_model('procure', 'OrderItem')
+
 
 # NEED
 class InquiryItemInline(admin.StackedInline):
@@ -120,6 +123,7 @@ class ProposeExtend(admin.ModelAdmin):
 class OfferExtend(admin.ModelAdmin):
     model = Offer
     inlines = [OfferItemInline, ]
+    readonly_fields = ['secret', ]
 
 
 admin.site.register(Propose, ProposeExtend)
@@ -142,3 +146,16 @@ class NegotiationExtend(admin.ModelAdmin):
 
 
 admin.site.register(Negotiation, NegotiationExtend)
+
+
+# ORDER
+class OrderItemInline(admin.StackedInline):
+    model = OrderItem
+
+
+class OrderExtend(admin.ModelAdmin):
+    model = Order
+    inlines = [OrderItemInline, ]
+
+
+admin.site.register(Order, OrderExtend)
