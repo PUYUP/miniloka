@@ -1,6 +1,9 @@
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
+from django.db.models.functions import ACos, Cos, Sin, Radians
+from django.db.models import Q, F, Value, FloatField
 
 from rest_framework import status as response_status, viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -80,10 +83,29 @@ class ListingApiView(viewsets.ViewSet):
             raise ValidationError(detail=str(e))
 
     def list(self, request, format=None):
-        role = request.query_params.get('role', None)
+        visibility = request.query_params.get('visibility', None)
+        latitude = request.query_params.get('latitude', None)
+        longitude = request.query_params.get('longitude', None)
 
-        if role == 'public':
+        if visibility == 'public':
             instances = self._instances_public()
+
+            # Calculate distance
+            if latitude and longitude:
+                calculate_distance = Value(6371) * ACos(
+                    Cos(Radians(float(latitude), output_field=FloatField()))
+                    * Cos(Radians(F('location__latitude'), output_field=FloatField()))
+                    * Cos(Radians(F('location__longitude'), output_field=FloatField())
+                          - Radians(float(longitude), output_field=FloatField()))
+                    + Sin(Radians(float(latitude), output_field=FloatField()))
+                    * Sin(Radians(F('location__latitude'),
+                                  output_field=FloatField())),
+                    output_field=FloatField()
+                )
+
+                instances = instances.annotate(distance=calculate_distance) \
+                    .filter(distance__lte=settings.DISTANCE_RADIUS) \
+                    .order_by('distance')
         else:
             instances = self._instances().filter(members__user_id=self.request.user.id)
 
