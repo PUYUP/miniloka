@@ -62,8 +62,7 @@ class ListingApiView(viewsets.ViewSet):
         return super().dispatch(request, *args, **kwargs)
 
     def _instances(self):
-        return self._queryset.filter(members__user_id=self.request.user.id) \
-            .order_by('-create_at')
+        return self._queryset.order_by('-create_at')
 
     def _instances_public(self):
         return self._queryset.order_by('-create_at')
@@ -86,7 +85,7 @@ class ListingApiView(viewsets.ViewSet):
         if role == 'public':
             instances = self._instances_public()
         else:
-            instances = self._instances()
+            instances = self._instances().filter(members__user_id=self.request.user.id)
 
         paginator = _PAGINATOR.paginate_queryset(instances, request)
         serializer = ListListingSerializer(paginator, context=self._context,

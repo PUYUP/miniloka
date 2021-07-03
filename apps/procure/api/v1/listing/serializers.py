@@ -235,6 +235,10 @@ class BaseListingSerializer(serializers.ModelSerializer):
                 reverse('procure_api:listing-detail',
                         kwargs={'uuid': instance.uuid})
             ),
+            'product': request.build_absolute_uri(
+                reverse('procure_api:listing-product',
+                        kwargs={'uuid': instance.uuid})
+            ),
         }
 
 
@@ -284,6 +288,6 @@ class RetrieveListingSerializer(BaseListingSerializer):
 
     class Meta:
         model = Listing
-        fields = ('uuid', 'label', 'keyword', 'description', 'create_at',
+        fields = ('uuid', 'links', 'label', 'keyword', 'description', 'create_at',
                   'location', 'openings', 'members', 'state', 'contact',)
         depth = 1
