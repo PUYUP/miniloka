@@ -88,6 +88,17 @@ class ProductApiView(viewsets.ViewSet):
             return Response(_serializer.data, status=response_status.HTTP_200_OK)
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)
 
+    @transaction.atomic()
+    def delete(self, request, uuid=None):
+        instances = self._instances()
+        if instances.exists():
+            instances.delete()
+            return Response(
+                {'detail': _("Delete success")},
+                status=response_status.HTTP_200_OK
+            )
+        raise NotFound()
+
     def list(self, request, format=None):
         return Response('LIST OF PRODUCTS', status=response_status.HTTP_200_OK)
 
