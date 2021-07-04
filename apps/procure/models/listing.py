@@ -1,18 +1,26 @@
 import os
 from decimal import Decimal
 
-from django.db import models
+from django.db import models, transaction
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
+from utils.validators import non_python_keyword, identifier_validator
 from .abstract import AbstractCommonField
 
 
 class AbstractListing(AbstractCommonField):
+    class Status(models.TextChoices):
+        PENDING = 'pending', _("Pending")
+        APPROVED = 'approved', _("Approved")
+        REJECTED = 'rejected', _("Rejected")
+
     label = models.CharField(max_length=255)
     description = models.TextField(null=True, blank=True)
     keyword = models.TextField()
     contact = models.JSONField(null=True, blank=True)
+    status = models.CharField(choices=Status.choices,
+                              default=Status.PENDING, max_length=15)
 
     class Meta:
         abstract = True
@@ -23,6 +31,28 @@ class AbstractListing(AbstractCommonField):
     def __str__(self) -> str:
         return self.label
 
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+
+        # save original values, when model is loaded from database,
+        # in a separate attribute on the model
+        instance._loaded_values = dict(zip(field_names, values))
+
+        return instance
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            # check if status is being updated
+            if self._loaded_values['status'] != self.status and self.pk:
+                self.update_listing_state()
+        return super().save(*args, **kwargs)
+
+    @transaction.atomic()
+    def update_listing_state(self):
+        self.states.model.objects \
+            .create(listing_id=self.pk, status=self.status)
+
 
 class AbstractListingState(AbstractCommonField):
     class Status(models.TextChoices):
@@ -30,18 +60,17 @@ class AbstractListingState(AbstractCommonField):
         APPROVED = 'approved', _("Approved")
         REJECTED = 'rejected', _("Rejected")
 
-    listing = models.OneToOneField('procure.Listing', on_delete=models.CASCADE,
-                                   related_name='state')
-
-    status = models.CharField(choices=Status.choices, default=Status.PENDING,
-                              max_length=15)
-    is_delete = models.BooleanField(default=False)
+    listing = models.ForeignKey('procure.Listing', on_delete=models.CASCADE,
+                                related_name='states')
+    status = models.CharField(choices=Status.choices,
+                              default=Status.PENDING, max_length=15)
+    note = models.TextField(null=True, blank=True)
 
     class Meta:
         abstract = True
         app_label = 'procure'
-        verbose_name = _("Listing Status")
-        verbose_name_plural = _("Listing Status")
+        verbose_name = _("Listing State")
+        verbose_name_plural = _("Listing States")
 
     def __str__(self) -> str:
         return self.get_status_display()
@@ -145,6 +174,8 @@ class AbstractListingAttachment(AbstractCommonField):
 
     label = models.CharField(max_length=255, null=True, blank=True)
     caption = models.TextField(null=True, blank=True)
+    identifier = models.CharField(max_length=25, null=True, blank=True,
+                                  validators=[non_python_keyword, identifier_validator])
 
     class Meta:
         abstract = True
@@ -211,8 +242,7 @@ class AbstractListingProductAttachment(AbstractCommonField):
 class AbstractListingLocation(AbstractCommonField):
     listing = models.OneToOneField('procure.Listing', related_name='location',
                                    on_delete=models.CASCADE)
-    street_address = models.TextField(
-        help_text=_("Jalan Pratu Boestaman No.10"))
+    street_address = models.TextField(help_text=_("Jalan Giri Manuk"))
     street_number = models.CharField(null=True, blank=True, max_length=255)
     route = models.TextField(null=True, blank=True)
     intersection = models.CharField(null=True, blank=True, max_length=255)

@@ -24,17 +24,6 @@ class BaseStateSerializer(serializers.ModelSerializer):
     pass
 
 
-class RetrieveListingStateSerializer(BaseStateSerializer):
-    status_display = serializers.SerializerMethodField()
-
-    class Meta:
-        model = ListingState
-        fields = ('status', 'status_display', 'is_delete',)
-
-    def get_status_display(self, instance):
-        return instance.get_status_display()
-
-
 """
 LOCATION...
 """
@@ -223,7 +212,8 @@ LISTING...
 class BaseListingSerializer(serializers.ModelSerializer):
     links = serializers.SerializerMethodField()
     location = RetrieveListingLocationSerializer(many=False, read_only=True)
-    state = RetrieveListingStateSerializer(many=False)
+    status_display = serializers.CharField(source='get_status_display',
+                                           read_only=True)
     openings = RetrieveListingOpeningSerializer(many=True, read_only=True)
     members = RetrieveListingMemberSerializer(many=True, read_only=True)
 
@@ -279,15 +269,13 @@ class ListListingSerializer(BaseListingSerializer):
     class Meta:
         model = Listing
         fields = ('uuid', 'links', 'label', 'keyword', 'description', 'create_at',
-                  'location', 'state',)
+                  'location', 'status', 'status_display',)
         depth = 1
 
 
 class RetrieveListingSerializer(BaseListingSerializer):
-    state = RetrieveListingStateSerializer(many=False)
-
     class Meta:
         model = Listing
         fields = ('uuid', 'links', 'label', 'keyword', 'description', 'create_at',
-                  'location', 'openings', 'members', 'state', 'contact',)
+                  'location', 'openings', 'members', 'status', 'status_display', 'contact',)
         depth = 1

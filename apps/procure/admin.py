@@ -30,6 +30,12 @@ NegotiationAttachment = get_model('procure', 'NegotiationAttachment')
 Order = get_model('procure', 'Order')
 OrderItem = get_model('procure', 'OrderItem')
 
+Installment = get_model('procure', 'Installment')
+InstallmentState = get_model('procure', 'InstallmentState')
+InstallmentAttachment = get_model('procure', 'InstallmentAttachment')
+InstallmentPayment = get_model('procure', 'InstallmentPayment')
+InstallmentLocation = get_model('procure', 'InstallmentLocation')
+
 
 # NEED
 class InquiryItemInline(admin.StackedInline):
@@ -82,16 +88,12 @@ class ListingMemberInline(admin.StackedInline):
     model = ListingMember
 
 
-class ListingStateInline(admin.StackedInline):
-    model = ListingState
-
-
 class ListingExtend(admin.ModelAdmin):
     model = Listing
-    list_display = ('label', 'state', 'location', 'create_at',)
+    list_display = ('label', 'status', 'location', 'create_at',)
     readonly_fields = ('create_at', )
     inlines = [ListingOpeningInline, ListingMemberInline,
-               ListingLocationInline, ListingStateInline, ]
+               ListingLocationInline, ]
 
 
 class ListingMemberExtend(admin.ModelAdmin):
@@ -101,6 +103,7 @@ class ListingMemberExtend(admin.ModelAdmin):
 
 admin.site.register(Listing, ListingExtend)
 admin.site.register(ListingMember, ListingMemberExtend)
+admin.site.register(ListingState)
 admin.site.register(ListingGallery)
 admin.site.register(ListingAttachment)
 admin.site.register(ListingProduct)
@@ -160,3 +163,22 @@ class OrderExtend(admin.ModelAdmin):
 
 
 admin.site.register(Order, OrderExtend)
+
+
+# INSTALLMENT
+class InstallmentAttachmentInline(admin.StackedInline):
+    model = InstallmentAttachment
+
+
+class InstallmentLocationInline(admin.StackedInline):
+    model = InstallmentLocation
+
+
+class InstallmentExtend(admin.ModelAdmin):
+    model = Installment
+    inlines = [InstallmentAttachmentInline, InstallmentLocationInline, ]
+
+
+admin.site.register(Installment, InstallmentExtend)
+admin.site.register(InstallmentState)
+admin.site.register(InstallmentPayment)

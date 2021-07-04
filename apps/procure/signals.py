@@ -64,7 +64,7 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
             # except listing from creator
             listing_ids = Listing.objects \
                 .annotate(distance=calculate_distance) \
-                .filter(keyword_query, state__status=ListingState.Status.APPROVED,
+                .filter(keyword_query, status=Listing.Status.APPROVED,
                         distance__lte=settings.DISTANCE_RADIUS) \
                 .exclude(members__user_id=inquiry.user.id) \
                 .values_list('id', flat=True)
@@ -111,13 +111,12 @@ def listing_save_handler(sender, instance, created, **kwargs):
     if created:
         # LOCATION
         if not hasattr(instance, 'location'):
-            _instance, _created = ListingLocation.objects \
+            _location, _created = ListingLocation.objects \
                 .get_or_create(listing=instance)
 
         # STATE
-        if not hasattr(instance, 'state'):
-            _instance, _created = ListingState.objects \
-                .get_or_create(listing=instance)
+        _states, _created = ListingState.objects \
+            .get_or_create(listing=instance, status=instance.status)
 
         # OPENINGS
         if not instance.openings.exists():

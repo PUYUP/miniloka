@@ -2,6 +2,8 @@ from .inquiry import *
 from .listing import *
 from .propose import *
 from .order import *
+from .installment import *
+
 from utils.generals import is_model_registered
 
 __all__ = list()
@@ -193,3 +195,48 @@ if not is_model_registered('procure', 'OrderItem'):
             pass
 
     __all__.append('OrderItem')
+
+
+# 23
+if not is_model_registered('procure', 'Installment'):
+    class Installment(AbstractInstallment):
+        class Meta(AbstractInstallment.Meta):
+            pass
+
+    __all__.append('Installment')
+
+
+# 24
+if not is_model_registered('procure', 'InstallmentState'):
+    class InstallmentState(AbstractInstallmentState):
+        class Meta(AbstractInstallmentState.Meta):
+            pass
+
+    __all__.append('InstallmentState')
+
+
+# 25
+if not is_model_registered('procure', 'InstallmentAttachment'):
+    class InstallmentAttachment(AbstractInstallmentAttachment):
+        class Meta(AbstractInstallmentAttachment.Meta):
+            pass
+
+    __all__.append('InstallmentAttachment')
+
+
+# 26
+if not is_model_registered('procure', 'InstallmentPayment'):
+    class InstallmentPayment(AbstractInstallmentPayment):
+        class Meta(AbstractInstallmentPayment.Meta):
+            pass
+
+    __all__.append('InstallmentPayment')
+
+
+# 27
+if not is_model_registered('procure', 'InstallmentLocation'):
+    class InstallmentLocation(AbstractInstallmentLocation):
+        class Meta(AbstractInstallmentLocation.Meta):
+            pass
+
+    __all__.append('InstallmentLocation')

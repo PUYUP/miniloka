@@ -119,7 +119,7 @@ class CreateProposeSerializer(BaseProposeSerializer):
 
                 if order:
                     raise serializers.ValidationError({
-                        'detail': _("Konsumen telah menerima tawaran. Tidak bisa dirubah.")
+                        'detail': _("Konsumen menerima tawaran tidak bisa dirubah.")
                     })
         return data
 
@@ -128,9 +128,9 @@ class CreateProposeSerializer(BaseProposeSerializer):
         listing_instance = data.get('listing')
 
         # listing must approved
-        if listing_instance.state.status == listing_instance.state.Status.PENDING:
+        if listing_instance.status == listing_instance.Status.PENDING:
             raise serializers.ValidationError({
-                'detail': _("Bisnis sedang diverifikasi. Tidak bisa mengirim penawaran.")
+                'detail': _("Bisnis sedang diverifikasi tidak bisa mengirim penawaran.")
             })
 
         # restric members only

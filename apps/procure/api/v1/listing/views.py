@@ -56,8 +56,8 @@ class ListingApiView(viewsets.ViewSet):
         self._context = {}
         self._uuid = None
         self._queryset = Listing.objects \
-            .prefetch_related('location', 'state', 'members', 'openings') \
-            .select_related('location', 'state')
+            .prefetch_related('location', 'members', 'openings') \
+            .select_related('location')
 
     def dispatch(self, request, *args, **kwargs):
         self._uuid = kwargs.get('uuid')
