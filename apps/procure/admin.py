@@ -91,6 +91,8 @@ class ListingMemberInline(admin.StackedInline):
 class ListingExtend(admin.ModelAdmin):
     model = Listing
     list_display = ('label', 'status', 'location', 'create_at',)
+    list_filter = ('status', )
+    search_fields = ('label', )
     readonly_fields = ('create_at', )
     inlines = [ListingOpeningInline, ListingMemberInline,
                ListingLocationInline, ]
