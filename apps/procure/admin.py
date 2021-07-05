@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth import get_user_model
+from django.contrib.admin import DateFieldListFilter
 from utils.generals import get_model
 
 Inquiry = get_model('procure', 'Inquiry')
@@ -91,7 +92,7 @@ class ListingMemberInline(admin.StackedInline):
 class ListingExtend(admin.ModelAdmin):
     model = Listing
     list_display = ('label', 'status', 'location', 'create_at',)
-    list_filter = ('status', )
+    list_filter = ('status', ('create_at', DateFieldListFilter), )
     search_fields = ('label', )
     readonly_fields = ('create_at', )
     inlines = [ListingOpeningInline, ListingMemberInline,
