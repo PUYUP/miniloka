@@ -1,3 +1,5 @@
+import re
+
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
 from django.db import transaction
@@ -86,9 +88,19 @@ class ListingApiView(viewsets.ViewSet):
         visibility = request.query_params.get('visibility', None)
         latitude = request.query_params.get('latitude', None)
         longitude = request.query_params.get('longitude', None)
+        keyword = request.query_params.get('keyword', None)
 
         if visibility == 'public':
-            instances = self._instances_public()
+            keywords = re.split(r"[^A-Za-z']+", keyword) if keyword else []
+            keyword_query = Q()
+
+            for keyword in keywords:
+                keyword_query |= Q(label__icontains=keyword) \
+                    or Q(keyword__icontains=keyword)
+
+            instances = self._instances_public().filter(status=Listing.Status.APPROVED)
+            if keyword:
+                instances = instances.filter(keyword_query)
 
             # Calculate distance
             if latitude and longitude:
