@@ -216,6 +216,7 @@ class BaseListingSerializer(serializers.ModelSerializer):
                                            read_only=True)
     openings = RetrieveListingOpeningSerializer(many=True, read_only=True)
     members = RetrieveListingMemberSerializer(many=True, read_only=True)
+    distance = serializers.FloatField(required=False, read_only=True)
 
     def get_links(self, instance):
         request = self.context.get('request')
@@ -269,7 +270,7 @@ class ListListingSerializer(BaseListingSerializer):
     class Meta:
         model = Listing
         fields = ('uuid', 'links', 'label', 'keyword', 'description', 'create_at',
-                  'location', 'status', 'status_display',)
+                  'location', 'status', 'status_display', 'distance',)
         depth = 1
 
 
@@ -277,5 +278,6 @@ class RetrieveListingSerializer(BaseListingSerializer):
     class Meta:
         model = Listing
         fields = ('uuid', 'links', 'label', 'keyword', 'description', 'create_at',
-                  'location', 'openings', 'members', 'status', 'status_display', 'contact',)
+                  'location', 'openings', 'members', 'status', 'status_display', 'contact',
+                  'distance',)
         depth = 1
