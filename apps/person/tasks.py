@@ -22,13 +22,13 @@ def send_securecode_email(data):
 
         # Message
         text = _(
-            "JANGAN BERIKAN KODE Kode Keamanan ini kepada siapapun "
+            "JANGAN BERIKAN Kode Keamanan ini kepada siapapun "
             "TERMASUK PIHAK %(app_label)s. Kode Kode Keamanan Anda: " +
             passcode
         ) % {'app_label': settings.APP_NAME}
 
         html = _(
-            "JANGAN BERIKAN KODE Kode Keamanan ini kepada siapapun "
+            "JANGAN BERIKAN Kode Keamanan ini kepada siapapun "
             "TERMASUK PIHAK %(app_label)s.<br />"
             "Kode Kode Keamanan Anda: "
             "<strong>" + passcode + "</strong>"
