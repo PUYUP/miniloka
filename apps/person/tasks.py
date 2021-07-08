@@ -18,7 +18,7 @@ def send_securecode_email(data):
 
     if to and passcode:
         subject = _("Kode Keamanan")
-        from_email = '%s <noreply@mydomain.com>' % (settings.APP_NAME)
+        from_email = '%s <noreply@miniloka.com>' % (settings.APP_NAME)
 
         # Message
         text = _(
