@@ -66,6 +66,26 @@ class OrderApiView(viewsets.ViewSet):
             return Response(_serializer.data, status=response_status.HTTP_201_CREATED)
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)
 
+    @transaction.atomic()
+    def delete(self, request, uuid=None):
+        instances = self._instances() \
+            .filter(uuid=self._uuid, user_id=request.user.id)
+
+        if instances.exists():
+            # check has Installment
+            instance = instances.get()
+            if hasattr(instance, 'installment'):
+                raise ValidationError(
+                    detail=_("Sedang lama cicilan tidak bisa dibatalkan.")
+                )
+
+            instances.delete()
+            return Response(
+                {'detail': _("Delete success")},
+                status=response_status.HTTP_200_OK
+            )
+        raise NotFound()
+
     def list(self, request, format=None):
         return Response('LIST', status=response_status.HTTP_200_OK)
 

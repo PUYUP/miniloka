@@ -4,7 +4,6 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models, transaction
-from django.db.models import Q, F
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.db.models.expressions import Exists, OuterRef, Subquery
 from django.utils.translation import ugettext_lazy as _
