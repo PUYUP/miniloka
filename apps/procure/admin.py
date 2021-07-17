@@ -20,6 +20,7 @@ ListingLocation = get_model('procure', 'ListingLocation')
 ListingState = get_model('procure', 'ListingState')
 ListingProduct = get_model('procure', 'ListingProduct')
 ListingProductAttachment = get_model('procure', 'ListingProductAttachment')
+InquirySkip = get_model('procure', 'InquirySkip')
 
 Propose = get_model('procure', 'Propose')
 Offer = get_model('procure', 'Offer')
@@ -31,16 +32,11 @@ NegotiationAttachment = get_model('procure', 'NegotiationAttachment')
 Order = get_model('procure', 'Order')
 OrderItem = get_model('procure', 'OrderItem')
 
-Installment = get_model('procure', 'Installment')
-InstallmentState = get_model('procure', 'InstallmentState')
-InstallmentAttachment = get_model('procure', 'InstallmentAttachment')
-InstallmentPayment = get_model('procure', 'InstallmentPayment')
-InstallmentLocation = get_model('procure', 'InstallmentLocation')
-
 
 # NEED
 class InquiryItemInline(admin.StackedInline):
     model = InquiryItem
+    autocomplete_fields = ('listing',)
 
 
 class InquiryLocationInline(admin.StackedInline):
@@ -49,8 +45,10 @@ class InquiryLocationInline(admin.StackedInline):
 
 class InquiryExtend(admin.ModelAdmin):
     model = Inquiry
-    inlines = [InquiryItemInline, InquiryLocationInline, ]
-    readonly_fields = ['tags', ]
+    inlines = (InquiryItemInline, InquiryLocationInline,)
+    readonly_fields = ('tags',)
+    list_display = ('keyword', 'user', 'is_open',)
+    autocomplete_fields = ('user',)
 
     def get_queryset(self, request):
         qs = super().get_queryset(request) \
@@ -106,6 +104,7 @@ class ListingMemberExtend(admin.ModelAdmin):
 
 admin.site.register(Listing, ListingExtend)
 admin.site.register(ListingMember, ListingMemberExtend)
+admin.site.register(InquirySkip)
 admin.site.register(ListingState)
 admin.site.register(ListingGallery)
 admin.site.register(ListingAttachment)
@@ -124,6 +123,7 @@ class OfferItemInline(admin.StackedInline):
 
 class ProposeExtend(admin.ModelAdmin):
     model = Propose
+    list_display = ['listing', 'inquiry', 'user', ]
     inlines = [OfferInline, ]
 
 
@@ -166,22 +166,3 @@ class OrderExtend(admin.ModelAdmin):
 
 
 admin.site.register(Order, OrderExtend)
-
-
-# INSTALLMENT
-class InstallmentAttachmentInline(admin.StackedInline):
-    model = InstallmentAttachment
-
-
-class InstallmentLocationInline(admin.StackedInline):
-    model = InstallmentLocation
-
-
-class InstallmentExtend(admin.ModelAdmin):
-    model = Installment
-    inlines = [InstallmentAttachmentInline, InstallmentLocationInline, ]
-
-
-admin.site.register(Installment, InstallmentExtend)
-admin.site.register(InstallmentState)
-admin.site.register(InstallmentPayment)

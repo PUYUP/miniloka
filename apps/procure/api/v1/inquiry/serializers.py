@@ -1,22 +1,72 @@
 import uuid
+import math
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
+from django.db.models import Sum
 from django.db.models.expressions import Exists, OuterRef
 from django.db.utils import IntegrityError
+from django.utils.translation import gettext_lazy as _
 from django.urls import reverse
 
 from rest_framework import serializers
+from rest_framework.exceptions import NotFound
 
 from utils.generals import get_model
 from ..offer.serializers import RetrieveOfferSerializer
-from ..order.serializers import RetrieveOrderSerializer
 
 Offer = get_model('procure', 'Offer')
 Inquiry = get_model('procure', 'Inquiry')
 InquiryItem = get_model('procure', 'InquiryItem')
 InquiryLocation = get_model('procure', 'InquiryLocation')
+InquirySkip = get_model('procure', 'InquirySkip')
 Propose = get_model('procure', 'Propose')
 Order = get_model('procure', 'Order')
+
+
+class _OrderSerializer(serializers.ModelSerializer):
+    listing = serializers.CharField(source='propose.listing.label')
+    distance = serializers.SerializerMethodField()
+    offer_cost = serializers.SerializerMethodField()
+    item_additional_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Order
+        fields = ('uuid', 'listing', 'cost', 'description', 'secret',
+                  'distance', 'offer_cost', 'item_additional_count',)
+
+    def get_distance(self, instance):
+        inquiry_latitude = instance.inquiry.location.latitude
+        inquiry_longitude = instance.inquiry.location.longitude
+
+        order_latitude = instance.latitude
+        order_longitude = instance.longitude
+
+        calculate_distance = 6371 * math.acos(
+            math.cos(math.radians(inquiry_latitude))
+            * math.cos(math.radians(order_latitude))
+            * math.cos(
+                math.radians(order_longitude) - math.radians(inquiry_longitude)
+            )
+            + math.sin(math.radians(inquiry_latitude))
+            * math.sin(math.radians(order_latitude))
+        )
+
+        return calculate_distance
+
+    def get_offer_cost(self, instance):
+        offer_cost = instance.offer.cost
+
+        if offer_cost > 0:
+            return offer_cost
+        else:
+            item_summary = instance.offer.items.aggregate(
+                total_cost=Sum('cost'))
+            return item_summary.get('total_cost')
+
+    def get_item_additional_count(self, instance):
+        count = instance.offer.items.filter(is_additional=True).count()
+        return count
 
 
 class InquiryListProposeSerializer(serializers.ModelSerializer):
@@ -62,6 +112,7 @@ class BaseInquirySerializer(serializers.ModelSerializer):
     items = InquiryItemSerializer(many=True)
     location = InquiryLocationSerializer()
     distance = serializers.FloatField(required=False)
+    order = _OrderSerializer(many=False, read_only=True)
 
     class Meta:
         model = Inquiry
@@ -128,7 +179,18 @@ class BaseInquirySerializer(serializers.ModelSerializer):
 
 class CreateInquirySerializer(BaseInquirySerializer):
     class Meta(BaseInquirySerializer.Meta):
-        fields = ('user', 'items', 'location', 'keyword',)
+        fields = ('user', 'items', 'location', 'keyword', 'is_open',)
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+
+        if self.instance:
+            # can't edit if has proposes
+            if self.instance.proposes.count() > 0 and data.get('is_open', None) == None:
+                raise serializers.ValidationError(
+                    {'detail': _("Ada penawaran tidak bisa dirubah")}
+                )
+        return data
 
     @transaction.atomic()
     def create(self, validated_data):
@@ -217,11 +279,53 @@ class RetrieveInquirySerializer(BaseInquirySerializer):
         fields = ('uuid', 'user', 'links', 'create_at', 'keyword',
                   'propose_count', 'items', 'newest_offer',
                   'newest_offer_cost', 'location', 'distance',
-                  'newest_item_additional_count',)
+                  'newest_item_additional_count', 'is_open', 'order',)
 
 
 class ListInquirySerializer(BaseInquirySerializer):
+    user = serializers.CharField(source='user.name')
+
     class Meta(BaseInquirySerializer.Meta):
         fields = ('uuid', 'user', 'links', 'create_at', 'keyword',
                   'propose_count', 'items', 'is_offered', 'distance',
-                  'newest_offer_cost', 'newest_item_additional_count',)
+                  'newest_offer_cost', 'newest_item_additional_count',
+                  'is_open', 'order',)
+
+
+"""
+SKIP...
+"""
+
+
+class CreateInquirySkipSerializer(serializers.ModelSerializer):
+    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
+    class Meta:
+        model = InquirySkip
+        fields = ('user',)
+
+    def to_internal_value(self, data):
+        data = super().to_internal_value(data)
+
+        try:
+            inquiry = Inquiry.objects.get(
+                uuid=self.context.get('inquiry_uuid'))
+            data.update({'inquiry': inquiry})
+        except ObjectDoesNotExist:
+            raise NotFound()
+
+        return data
+
+    @transaction.atomic()
+    def create(self, validated_data):
+        instance, _created = InquirySkip.objects \
+            .get_or_create(**validated_data)
+        return instance
+
+
+class RetrieveInquirySkipSerializer(serializers.ModelSerializer):
+    inquiry = serializers.UUIDField(source='inquiry.uuid')
+
+    class Meta:
+        model = InquirySkip
+        fields = '__all__'

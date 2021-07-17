@@ -1,6 +1,9 @@
 from django.db import transaction
 from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
+from django.db import IntegrityError
+from django.db.models.expressions import Case, Value, When
 from django.utils.translation import gettext_lazy as _
+from django.db.models import Q, F, Sum, IntegerField
 
 from rest_framework import status as response_status, viewsets
 from rest_framework.exceptions import NotFound, ValidationError
@@ -11,6 +14,7 @@ from utils.generals import get_model
 from .serializers import CreateOrderSerializer, RetrieveOrderSerializer
 
 Order = get_model('procure', 'Order')
+Submission = get_model('peerland', 'Submission')
 
 
 class OrderApiView(viewsets.ViewSet):
@@ -33,7 +37,22 @@ class OrderApiView(viewsets.ViewSet):
 
     def _instances(self):
         return self._queryset \
-            .filter(inquiry__user_id=self.request.user.id)
+            .annotate(
+                is_creator=Case(
+                    When(inquiry__user_id=self.request.user.id, then=Value(True)),
+                    default=Value(False)
+                ),
+                total_item_cost=Sum('items__cost'),
+                total_cost=Case(
+                    When(cost__lte=0, then=F('total_item_cost')),
+                    default=F('cost'),
+                    output_field=IntegerField()
+                )
+            ) \
+            .filter(
+                Q(inquiry__user_id=self.request.user.id)
+                | Q(offer__user_id=self.request.user.id)
+            )
 
     def _instance(self, is_update=False):
         try:
@@ -53,16 +72,23 @@ class OrderApiView(viewsets.ViewSet):
         serializer = CreateOrderSerializer(data=request.data, many=False,
                                            context=self._context)
         if serializer.is_valid(raise_exception=True):
+            error_message = None
+
             try:
                 serializer.save()
             except DjangoValidationError as e:
+                error_message = _(" ".join(e.messages))
+            except IntegrityError as e:
+                error_message = str(e)
+
+            if error_message is not None:
                 return Response(
-                    {'detail': _(" ".join(e.messages))},
+                    {'detail': error_message},
                     status=response_status.HTTP_406_NOT_ACCEPTABLE
                 )
 
-            _serializer = RetrieveOrderSerializer(
-                serializer.instance, many=False)
+            _serializer = RetrieveOrderSerializer(serializer.instance,
+                                                  many=False)
             return Response(_serializer.data, status=response_status.HTTP_201_CREATED)
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)
 
@@ -72,11 +98,15 @@ class OrderApiView(viewsets.ViewSet):
             .filter(uuid=self._uuid, user_id=request.user.id)
 
         if instances.exists():
-            # check has Installment
+            # check has Submission
             instance = instances.get()
-            if hasattr(instance, 'installment'):
+            submission = Submission.objects \
+                .filter(burden_content_type__model='order', burden_object_id=instance.id,
+                        status=Submission.Status.APPROVED)
+
+            if submission.exists():
                 raise ValidationError(
-                    detail=_("Sedang lama cicilan tidak bisa dibatalkan.")
+                    detail=_("Sedang dicicil tidak bisa dibatalkan.")
                 )
 
             instances.delete()

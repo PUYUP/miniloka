@@ -2,11 +2,11 @@ from .inquiry import *
 from .listing import *
 from .propose import *
 from .order import *
-from .installment import *
 
 from utils.generals import is_model_registered
 
 __all__ = list()
+
 
 # 1
 if not is_model_registered('procure', 'Inquiry'):
@@ -45,6 +45,15 @@ if not is_model_registered('procure', 'InquiryLocation'):
 
 
 # 5
+if not is_model_registered('procure', 'InquirySkip'):
+    class InquirySkip(AbstractInquirySkip):
+        class Meta(AbstractInquirySkip.Meta):
+            pass
+
+    __all__.append('InquirySkip')
+
+
+# 6
 if not is_model_registered('procure', 'Listing'):
     class Listing(AbstractListing):
         class Meta(AbstractListing.Meta):
@@ -53,7 +62,7 @@ if not is_model_registered('procure', 'Listing'):
     __all__.append('Listing')
 
 
-# 6
+# 7
 if not is_model_registered('procure', 'ListingState'):
     class ListingState(AbstractListingState):
         class Meta(AbstractListingState.Meta):
@@ -62,7 +71,7 @@ if not is_model_registered('procure', 'ListingState'):
     __all__.append('ListingState')
 
 
-# 7
+# 8
 if not is_model_registered('procure', 'ListingMember'):
     class ListingMember(AbstractListingMember):
         class Meta(AbstractListingMember.Meta):
@@ -71,7 +80,7 @@ if not is_model_registered('procure', 'ListingMember'):
     __all__.append('ListingMember')
 
 
-# 8
+# 9
 if not is_model_registered('procure', 'ListingOpening'):
     class ListingOpening(AbstractListingOpening):
         class Meta(AbstractListingOpening.Meta):
@@ -80,7 +89,7 @@ if not is_model_registered('procure', 'ListingOpening'):
     __all__.append('ListingOpening')
 
 
-# 9
+# 10
 if not is_model_registered('procure', 'ListingGallery'):
     class ListingGallery(AbstractListingGallery):
         class Meta(AbstractListingGallery.Meta):
@@ -89,7 +98,7 @@ if not is_model_registered('procure', 'ListingGallery'):
     __all__.append('ListingGallery')
 
 
-# 10
+# 11
 if not is_model_registered('procure', 'ListingAttachment'):
     class ListingAttachment(AbstractListingAttachment):
         class Meta(AbstractListingAttachment.Meta):
@@ -98,7 +107,7 @@ if not is_model_registered('procure', 'ListingAttachment'):
     __all__.append('ListingAttachment')
 
 
-# 11
+# 12
 if not is_model_registered('procure', 'ListingLocation'):
     class ListingLocation(AbstractListingLocation):
         class Meta(AbstractListingLocation.Meta):
@@ -195,48 +204,3 @@ if not is_model_registered('procure', 'OrderItem'):
             pass
 
     __all__.append('OrderItem')
-
-
-# 23
-if not is_model_registered('procure', 'Installment'):
-    class Installment(AbstractInstallment):
-        class Meta(AbstractInstallment.Meta):
-            pass
-
-    __all__.append('Installment')
-
-
-# 24
-if not is_model_registered('procure', 'InstallmentState'):
-    class InstallmentState(AbstractInstallmentState):
-        class Meta(AbstractInstallmentState.Meta):
-            pass
-
-    __all__.append('InstallmentState')
-
-
-# 25
-if not is_model_registered('procure', 'InstallmentAttachment'):
-    class InstallmentAttachment(AbstractInstallmentAttachment):
-        class Meta(AbstractInstallmentAttachment.Meta):
-            pass
-
-    __all__.append('InstallmentAttachment')
-
-
-# 26
-if not is_model_registered('procure', 'InstallmentPayment'):
-    class InstallmentPayment(AbstractInstallmentPayment):
-        class Meta(AbstractInstallmentPayment.Meta):
-            pass
-
-    __all__.append('InstallmentPayment')
-
-
-# 27
-if not is_model_registered('procure', 'InstallmentLocation'):
-    class InstallmentLocation(AbstractInstallmentLocation):
-        class Meta(AbstractInstallmentLocation.Meta):
-            pass
-
-    __all__.append('InstallmentLocation')

@@ -197,10 +197,11 @@ class CreateListingMemberSerializer(BaseListingMemberSerializer):
 
 class RetrieveListingMemberSerializer(BaseListingMemberSerializer):
     profile = ProfileSerializer(source='user.profile')
+    user_uuid = serializers.UUIDField(source='user.uuid')
 
     class Meta:
         model = ListingMember
-        fields = ('uuid', 'user', 'profile', 'is_creator', 'is_admin',
+        fields = ('uuid', 'user', 'user_uuid', 'profile', 'is_creator', 'is_admin',
                   'is_allow_propose', 'is_default',)
 
 
@@ -217,6 +218,7 @@ class BaseListingSerializer(serializers.ModelSerializer):
     openings = RetrieveListingOpeningSerializer(many=True, read_only=True)
     members = RetrieveListingMemberSerializer(many=True, read_only=True)
     distance = serializers.FloatField(required=False, read_only=True)
+    notification_count = serializers.IntegerField(read_only=True)
 
     def get_links(self, instance):
         request = self.context.get('request')
@@ -249,6 +251,7 @@ class CreateListingSerializer(serializers.ModelSerializer):
         data = super().to_internal_value(data)
         self._user = data.pop('user', None)  \
             or self.initial_data.pop('user', None)
+
         return data
 
     @transaction.atomic()
@@ -270,14 +273,19 @@ class ListListingSerializer(BaseListingSerializer):
     class Meta:
         model = Listing
         fields = ('uuid', 'links', 'label', 'keyword', 'description', 'create_at',
-                  'location', 'status', 'status_display', 'distance',)
+                  'location', 'status', 'status_display', 'distance',
+                  'notification_count',)
         depth = 1
 
 
 class RetrieveListingSerializer(BaseListingSerializer):
+    is_admin = serializers.BooleanField(read_only=True)
+    is_creator = serializers.BooleanField(read_only=True)
+    is_default = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = Listing
         fields = ('uuid', 'links', 'label', 'keyword', 'description', 'create_at',
                   'location', 'openings', 'members', 'status', 'status_display', 'contact',
-                  'distance',)
+                  'distance', 'is_admin', 'is_creator', 'is_default',)
         depth = 1

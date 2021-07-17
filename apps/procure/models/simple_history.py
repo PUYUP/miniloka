@@ -7,6 +7,7 @@ from utils.generals import get_model
 Inquiry = get_model('procure', 'Inquiry')
 InquiryItem = get_model('procure', 'InquiryItem')
 InquiryLocation = get_model('procure', 'InquiryLocation')
+InquirySkip = get_model('procure', 'InquirySkip')
 
 Tag = get_model('procure', 'Tag')
 TagItem = get_model('procure', 'TagItem')
@@ -27,12 +28,6 @@ OfferItem = get_model('procure', 'OfferItem')
 Order = get_model('procure', 'Order')
 OrderItem = get_model('procure', 'OrderItem')
 
-Installment = get_model('procure', 'Installment')
-InstallmentState = get_model('procure', 'InstallmentState')
-InstallmentAttachment = get_model('procure', 'InstallmentAttachment')
-InstallmentPayment = get_model('procure', 'InstallmentPayment')
-InstallmentLocation = get_model('procure', 'InstallmentLocation')
-
 
 # NEED
 register(Inquiry, app=__package__,
@@ -42,6 +37,9 @@ register(InquiryItem, app=__package__,
          history_id_field=models.UUIDField(default=uuid.uuid4))
 
 register(InquiryLocation, app=__package__,
+         history_id_field=models.UUIDField(default=uuid.uuid4))
+
+register(InquirySkip, app=__package__,
          history_id_field=models.UUIDField(default=uuid.uuid4))
 
 
@@ -95,21 +93,4 @@ register(Order, app=__package__,
          history_id_field=models.UUIDField(default=uuid.uuid4))
 
 register(OrderItem, app=__package__,
-         history_id_field=models.UUIDField(default=uuid.uuid4))
-
-
-# INSTALLMENT
-register(Installment, app=__package__,
-         history_id_field=models.UUIDField(default=uuid.uuid4))
-
-register(InstallmentAttachment, app=__package__,
-         history_id_field=models.UUIDField(default=uuid.uuid4))
-
-register(InstallmentPayment, app=__package__,
-         history_id_field=models.UUIDField(default=uuid.uuid4))
-
-register(InstallmentLocation, app=__package__,
-         history_id_field=models.UUIDField(default=uuid.uuid4))
-
-register(InstallmentState, app=__package__,
          history_id_field=models.UUIDField(default=uuid.uuid4))

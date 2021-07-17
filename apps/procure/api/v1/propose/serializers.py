@@ -151,8 +151,13 @@ class CreateProposeSerializer(BaseProposeSerializer):
         coordinate_data = validated_data.pop('coordinate', dict())
         listing_instance = validated_data.get('listing')
 
+        # Ignore user
+        user = validated_data.pop('user')
+        defaults = {'user': user}
+
         # Create or get propose
-        instance, _created = Propose.objects.get_or_create(**validated_data)
+        instance, _created = Propose.objects \
+            .get_or_create(defaults=defaults, **validated_data)
 
         # Get coordinate from listing if not provided from request
         if not coordinate_data:
@@ -233,15 +238,16 @@ class _ProposeListingSerializer(serializers.ModelSerializer):
 
 
 class RetrieveProposeSerializer(BaseProposeSerializer):
-    newest_offer = serializers.SerializerMethodField()
     inquiry = serializers.UUIDField(source='inquiry.uuid', required=False)
     listing = _ProposeListingSerializer(many=False, required=False)
+    newest_offer = serializers.SerializerMethodField()
+    has_order = serializers.SerializerMethodField()
 
     class Meta:
         model = Propose
         fields = ('uuid', 'create_at', 'update_at',
                   'links', 'newest_offer', 'listing',
-                  'inquiry',)
+                  'inquiry', 'has_order',)
         depth = 1
 
     def get_newest_offer(self, instance):
@@ -266,3 +272,6 @@ class RetrieveProposeSerializer(BaseProposeSerializer):
             return serializer.data
         else:
             return None
+
+    def get_has_order(self, instance):
+        return hasattr(instance.inquiry, 'order')

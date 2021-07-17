@@ -4,7 +4,9 @@ from decimal import Decimal
 from django.db import models, transaction
 from django.db.models import Q
 from django.conf import settings
+from django.db.models.aggregates import Sum
 from django.utils.translation import gettext_lazy as _
+from django.contrib.humanize.templatetags.humanize import intcomma
 
 from utils.generals import random_string
 from .abstract import AbstractCommonField
@@ -69,7 +71,15 @@ class AbstractOffer(AbstractCommonField):
         verbose_name_plural = _("Offers")
 
     def __str__(self) -> str:
-        return str(self.cost)
+        return 'Rp' + str(intcomma(self.display_cost))
+
+    @property
+    def display_cost(self):
+        if self.cost > 0:
+            return self.cost
+        else:
+            item_cost = self.items.aggregate(cost=Sum('cost'))
+            return item_cost.get('cost', 0)
 
     @transaction.atomic()
     def save(self, *args, **kwargs):

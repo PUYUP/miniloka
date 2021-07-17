@@ -1,0 +1,1 @@
+SOFT_DELETE = False

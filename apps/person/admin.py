@@ -27,7 +27,7 @@ class UserExtend(UserAdmin):
     inlines = [ProfileInline, UserMetaInline, ]
     list_display = ('username', 'first_name', 'email', 'msisdn', 'is_staff')
     list_filter = UserAdmin.list_filter + \
-        (('date_joined', DateFieldListFilter), )
+        (('date_joined', DateFieldListFilter), 'last_login',)
     fieldsets = (
         (None, {'fields': ('username', 'password', 'email', 'is_email_verified',
                            'msisdn', 'is_msisdn_verified',)}),

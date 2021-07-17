@@ -7,18 +7,9 @@ from .base import *
 # GLOBAL CONFIGURATIONS
 APP_NAME = 'Mini Loka'
 PROJECT_URL = 'www.miniloka.com'
-PAGINATION_PER_PAGE = 20
+PAGINATION_PER_PAGE = 15
 LOGOUT_REDIRECT_URL = '/'
 # If true in recovery password inquiry make sure account exist
-RECOVERY_PASSWORD_CHECK_ACCOUNT = True
-DISTANCE_RADIUS = 15
-
-
-# REGISTRATION REQUIREMENTS
-USER_EMAIL_FIELD = 'email'
-USER_MSISDN_FIELD = 'msisdn'
-USER_REQUIRED_VERIFICATION = True
-USER_VERIFICATION_FIELDS = ['email', 'msisdn']
 
 
 # FIREBASE
@@ -35,6 +26,8 @@ PROJECT_APPS = [
     'simple_history',
     'apps.person',
     'apps.procure',
+    'apps.notifier',
+    'apps.peerland',
 ]
 INSTALLED_APPS = INSTALLED_APPS + PROJECT_APPS
 

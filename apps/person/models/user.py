@@ -10,17 +10,20 @@ from django.utils.translation import ugettext_lazy as _
 from django.utils.text import slugify
 
 from utils.validators import non_python_keyword, identifier_validator
+from apps.person import settings as person_settings
+
+VERIFICATION_FIELDS = person_settings.VERIFICATION_FIELDS
 
 
 class UserManagerExtend(UserManager):
     @transaction.atomic()
     def create_user(self, username, password, **extra_fields):
         field_checker = any(
-            field in settings.USER_VERIFICATION_FIELDS for field in extra_fields.keys())
+            field in VERIFICATION_FIELDS for field in extra_fields.keys())
 
         if not field_checker:
             raise ValueError(_("The given {} must be set".format(
-                ' or '.join(settings.USER_VERIFICATION_FIELDS))))
+                ' or '.join(VERIFICATION_FIELDS))))
         return super().create_user(username, password=password, **extra_fields)
 
 

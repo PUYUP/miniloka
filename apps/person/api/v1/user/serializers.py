@@ -1,6 +1,3 @@
-from datetime import datetime
-
-from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
 from django.db import transaction, IntegrityError
 from django.contrib.auth import get_user_model
@@ -20,6 +17,8 @@ from apps.person.api.validator import (
     MsisdnNumberValidator
 )
 
+from apps.person import settings as person_settings
+from apps.person.utils.generator import generate_username
 from ..profile.serializers import ProfileSerializer
 
 UserModel = get_user_model()
@@ -27,8 +26,9 @@ User = get_model('person', 'User')
 UserMeta = get_model('person', 'UserMeta')
 SecureCode = get_model('person', 'SecureCode')
 
-EMAIL_FIELD = settings.USER_MSISDN_FIELD
-MSISDN_FIELD = settings.USER_EMAIL_FIELD
+EMAIL_FIELD = person_settings.EMAIL_FIELD
+MSISDN_FIELD = person_settings.MSISDN_FIELD
+REQUIRED_VERIFICATION = person_settings.REQUIRED_VERIFICATION
 
 
 class CustomExcpetion(PermissionDenied):
@@ -109,7 +109,7 @@ class BaseUserSerializer(DynamicFields, serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
 
         # Remove verification process
-        if not settings.USER_REQUIRED_VERIFICATION:
+        if not REQUIRED_VERIFICATION:
             self.fields.pop('verification', None)
 
         self._request = self.context.get('request')
@@ -157,7 +157,7 @@ class BaseUserSerializer(DynamicFields, serializers.ModelSerializer):
 
         # verification required!
         if (self._verify_field and self._verify_value) \
-                and settings.USER_REQUIRED_VERIFICATION:
+                and REQUIRED_VERIFICATION:
             verification = attrs.pop('verification', {}) \
                 or self.initial_data.pop('verification', {})
 
@@ -220,11 +220,8 @@ class CreateUserSerializer(BaseUserSerializer):
 
         # generate username if not define
         if 'username' not in validated_data:
-            now = datetime.now()
-            trim_first_name = first_name[:4]
-            timestamp_only = str(datetime.timestamp(now)).split('.', 1)[0]
-            new_username = '{}-{}'.format(trim_first_name, timestamp_only)
-            validated_data.update({'username': slugify(new_username)})
+            username = generate_username(first_name)
+            validated_data.update({'username': slugify(username)})
 
         # set user is_active to True
         validated_data.update({'is_active': True})

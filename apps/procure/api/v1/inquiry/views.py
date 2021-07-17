@@ -1,6 +1,5 @@
 import re
 
-from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import (
@@ -22,11 +21,14 @@ from utils.generals import get_model
 from utils.pagination import build_result_pagination
 from .serializers import (
     CreateInquirySerializer,
+    CreateInquirySkipSerializer,
     ListInquirySerializer,
     RetrieveInquirySerializer,
-    InquiryListProposeSerializer
+    InquiryListProposeSerializer,
+    RetrieveInquirySkipSerializer
 )
 from ..offer.serializers import ListOfferSerializer
+from apps.procure import settings as procure_settings
 
 Inquiry = get_model('procure', 'Inquiry')
 Offer = get_model('procure', 'Offer')
@@ -34,6 +36,7 @@ Propose = get_model('procure', 'Propose')
 
 # Define to avoid used ...().paginate__
 _PAGINATOR = LimitOffsetPagination()
+DISTANCE_RADIUS = procure_settings.DISTANCE_RADIUS
 
 
 class InquiryApiView(viewsets.ViewSet):
@@ -65,8 +68,8 @@ class InquiryApiView(viewsets.ViewSet):
         self._context = {}
         self._uuid = None
         self._queryset = Inquiry.objects \
-            .prefetch_related('user', 'items', 'location') \
-            .select_related('user', 'location')
+            .prefetch_related('user', 'items', 'location', 'order') \
+            .select_related('user', 'location', 'order')
 
     def dispatch(self, request, *args, **kwargs):
         self._uuid = kwargs.get('uuid')
@@ -120,7 +123,8 @@ class InquiryApiView(viewsets.ViewSet):
             .filter(
                 propose__inquiry_id=OuterRef('pk'),
                 propose__listing_id=default_listing_id,
-                propose__listing__members__user_id=user.id
+                propose__listing__members__user_id=user.id,
+                user_id=user.id
             ) \
             .order_by('-create_at')
 
@@ -149,10 +153,10 @@ class InquiryApiView(viewsets.ViewSet):
             .filter(
                 keyword_query,
                 Q(distance__lte=Case(
-                    When(distance__isnull=False, then=settings.DISTANCE_RADIUS)
+                    When(distance__isnull=False, then=DISTANCE_RADIUS)
                 )) | Q(distance__isnull=True)
             ) \
-            .order_by('distance', '-create_at')
+            .order_by('-create_at', 'distance')
 
     # My own inquiries
     def _instance(self, is_update=False):
@@ -177,19 +181,14 @@ class InquiryApiView(viewsets.ViewSet):
             except ValidationError as e:
                 return Response({'detail': _(" ".join(e.messages))}, status=response_status.HTTP_406_NOT_ACCEPTABLE)
 
-            _serializer = RetrieveInquirySerializer(
-                serializer.instance, context=self._context)
+            _serializer = RetrieveInquirySerializer(serializer.instance,
+                                                    context=self._context)
             return Response(_serializer.data, status=response_status.HTTP_201_CREATED)
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)
 
     @transaction.atomic()
     def partial_update(self, request, uuid=None, format=None):
         instance = self._instance(is_update=True)
-
-        # can't edit if has proposes
-        if instance.proposes.count() > 0:
-            raise ValidationError({'detail': _("Has proposes can't edit")})
-
         serializer = CreateInquirySerializer(instance, partial=True, many=False,
                                              data=request.data, context=self._context)
         if serializer.is_valid(raise_exception=True):
@@ -223,13 +222,23 @@ class InquiryApiView(viewsets.ViewSet):
         params = request.query_params
         obtain = params.get('obtain', None)
         keyword = params.get('keyword', None)
+        segment = params.get('segment', None)
 
         if obtain == 'hunt':
             instances = self._instances(keyword=keyword) \
-                .exclude(user_id=request.user.id)
+                .filter(order__isnull=False if segment == 'ordered' else True) \
+                .exclude(Q(user_id=request.user.id) | Q(skips__user_id=request.user.id))
+
         else:
             instances = self._instances(keyword=keyword) \
                 .filter(user_id=request.user.id)
+
+            if segment == 'active' or segment is None:
+                instances = instances.filter(is_open=True)
+            elif segment == 'closed':
+                instances = instances.filter(is_open=False)
+            elif segment == 'ordered':
+                instances = instances.filter(order__isnull=False)
 
         paginator = _PAGINATOR.paginate_queryset(instances, request)
         serializer = ListInquirySerializer(paginator, context=self._context,
@@ -366,3 +375,24 @@ class InquiryApiView(viewsets.ViewSet):
                                          context=self._context)
         results = build_result_pagination(self, _PAGINATOR, serializer)
         return Response(results, status=response_status.HTTP_200_OK)
+
+    """
+    Skip...
+    """
+
+    @action(methods=['POST'], detail=True, url_name='skips', url_path='skips',
+            permission_classes=(IsAuthenticated,))
+    def skips(self, request, uuid=None, format=None):
+        self._context.update({'inquiry_uuid': uuid})
+        serializer = CreateInquirySkipSerializer(data=request.data, context=self._context,
+                                                 many=False)
+        if serializer.is_valid(raise_exception=True):
+            try:
+                serializer.save()
+            except DjangoValidationError as e:
+                raise ValidationError(detail=str(e))
+
+            _serializer = RetrieveInquirySkipSerializer(serializer.instance,
+                                                        context=self._context)
+            return Response(_serializer.data, status=response_status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)

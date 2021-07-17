@@ -34,5 +34,9 @@ class RootApiView(APIView):
                                   format=format, current_app='procure'),
                 'products': reverse('procure_api:product-list', request=request,
                                     format=format, current_app='procure'),
+            },
+            'notifier': {
+                'notifications': reverse('notifier_api:notification-list', request=request,
+                                         format=format, current_app='notifier'),
             }
         })

@@ -2,86 +2,122 @@ import os
 from decimal import Decimal
 
 from django.db import models, transaction
-from django.conf import settings
 from django.utils.translation import gettext_lazy as _
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericForeignKey  # noqa
 
 from utils.validators import non_python_keyword, identifier_validator
 from .abstract import AbstractCommonField
 
 
-class AbstractInstallment(AbstractCommonField):
+class AbstractSubmission(AbstractCommonField):
     class Status(models.TextChoices):
         PENDING = 'pending', _("Pending")
         APPROVED = 'approved', _("Approved")
         REJECTED = 'rejected', _("Rejected")
 
-    lender = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='installment_lenders',
-                               on_delete=models.CASCADE, null=True, blank=True)
-    borrower = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='installment_borrowers',
-                                 on_delete=models.CASCADE)
-    order = models.OneToOneField('procure.Order', related_name='installment',
-                                 on_delete=models.CASCADE)
-    listing = models.ForeignKey('procure.Listing', related_name='installments',
-                                on_delete=models.CASCADE, editable=False)
+    class Period(models.TextChoices):
+        MONTHLY = 'monthly', _("Monthly")
+        BIWEEKLY = 'biweekly', _("Biweekly")
 
+    # ex: an Order from procure
+    burden_content_type = models.ForeignKey(
+        ContentType,
+        related_name='submission_burden',
+        on_delete=models.CASCADE
+    )
+    burden_object_id = models.CharField(max_length=255)
+    burden = GenericForeignKey('burden_content_type', 'burden_object_id')
+
+    description = models.TextField(null=True, blank=True)
     amount = models.BigIntegerField()
     tenor = models.IntegerField()
+    period = models.CharField(max_length=15, choices=Period.choices,
+                              default=Period.MONTHLY)
     start_at = models.DateTimeField()
     due_at = models.DateTimeField()
+    repayment_at = models.DateTimeField()
     status = models.CharField(choices=Status.choices,
                               default=Status.PENDING, max_length=15)
 
     class Meta:
         abstract = True
-        app_label = 'procure'
-        verbose_name = _("Installment")
-        verbose_name_plural = _("Installments")
+        app_label = 'peerland'
+        verbose_name = _("Submission")
+        verbose_name_plural = _("Submissions")
 
     def __str__(self) -> str:
-        return self.user.name
+        return self.order or str(self.amount)
 
     def save(self, *args, **kwargs):
-        self.listing = self.order.propose.listing
+        if self.listing:
+            self.listing = self.order.propose.listing
 
-        if not self._state.adding:
+        if not self._state.adding and hasattr(self, '_loaded_values'):
             # check if status is being updated
             if self._loaded_values['status'] != self.status and self.pk:
-                self.update_installment_state()
+                self.update_submission_state()
         return super().save(*args, **kwargs)
 
     @transaction.atomic()
-    def update_installment_state(self):
+    def update_submission_state(self):
         self.states.model.objects \
             .create(listing_id=self.pk, status=self.status)
 
 
-class AbstractInstallmentState(AbstractCommonField):
+class AbstractTerm(AbstractCommonField):
+    class MetaKey(models.TextChoices):
+        TERM_IDCARD_NUMBER = 'term_idcard_number', _("Term IDCard Number")
+        TERM_MOTHER_NAME = 'term_mother_name', _("Term Mother Name")
+
+    submission = models.ForeignKey('peerland.Submission', on_delete=models.CASCADE,
+                                   related_name='terms')
+    meta_key = models.CharField(max_length=255, choices=MetaKey.choices)
+    meta_value = models.TextField()
+
+    class Meta:
+        abstract = True
+        app_label = 'peerland'
+        verbose_name = _("Meta Data")
+        verbose_name_plural = _("Meta Datas")
+
+    def __str__(self) -> str:
+        return self.get_meta_key_display()
+
+
+class AbstractState(AbstractCommonField):
     class Status(models.TextChoices):
         PENDING = 'pending', _("Pending")
         APPROVED = 'approved', _("Approved")
         REJECTED = 'rejected', _("Rejected")
 
-    installment = models.ForeignKey('procure.Installment', on_delete=models.CASCADE,
-                                    related_name='states')
+    submission = models.ForeignKey('peerland.Submission', on_delete=models.CASCADE,
+                                   related_name='states')
     status = models.CharField(choices=Status.choices,
                               default=Status.PENDING, max_length=15)
     note = models.TextField(null=True, blank=True)
 
     class Meta:
         abstract = True
-        app_label = 'procure'
-        verbose_name = _("Installment State")
-        verbose_name_plural = _("Installment States")
+        app_label = 'peerland'
+        verbose_name = _("State")
+        verbose_name_plural = _("States")
 
     def __str__(self) -> str:
         return self.get_status_display()
 
 
-class AbstractInstallmentAttachment(AbstractCommonField):
-    installment = models.ForeignKey('procure.Installment', on_delete=models.CASCADE,
-                                    related_name='attachments')
+class AbstractAttachment(AbstractCommonField):
+    class Identifier(models.TextChoices):
+        VIDEO_IDCARD = 'photo_idcard', _("ID Card")
+        VIDEO_SELFIE = 'video_selfie', _("Video Selfie + ID Card")
+        VIDEO_WITH_PARTNER = 'photo_with_partner', _("Photo With Partner")
+        VIDEO_WITH_PRODUCT = 'photo_with_product', _("Photo With Product")
 
-    file = models.FileField(upload_to='gallery/%Y/%m/%d')
+    submission = models.ForeignKey('peerland.Submission', on_delete=models.CASCADE,
+                                   related_name='attachments')
+
+    file = models.FileField(upload_to='submission/%Y/%m/%d')
     filename = models.CharField(max_length=255, editable=False)
     filepath = models.CharField(max_length=255, editable=False)
     filesize = models.IntegerField(editable=False)
@@ -90,13 +126,16 @@ class AbstractInstallmentAttachment(AbstractCommonField):
     label = models.CharField(max_length=255, null=True, blank=True)
     caption = models.TextField(null=True, blank=True)
     identifier = models.CharField(max_length=25, null=True, blank=True,
-                                  validators=[non_python_keyword, identifier_validator])
+                                  validators=[non_python_keyword,
+                                              identifier_validator],
+                                  choices=Identifier.choices,
+                                  default=Identifier.VIDEO_IDCARD)
 
     class Meta:
         abstract = True
-        app_label = 'procure'
-        verbose_name = _("Installment Attachment")
-        verbose_name_plural = _("Installment Attachments")
+        app_label = 'peerland'
+        verbose_name = _("Attachment")
+        verbose_name_plural = _("Attachments")
 
     def __str__(self) -> str:
         return self.label
@@ -108,52 +147,9 @@ class AbstractInstallmentAttachment(AbstractCommonField):
         super().save(*args, **kwargs)
 
 
-class AbstractInstallmentPayment(AbstractCommonField):
-    class Channel(models.TextChoices):
-        CASH = 'cash', _("Cash")
-        CREDIT_CARD = 'credit_card', _("Credit Card")
-        BCA_VA = 'bca_va', _("BCA Virtual Account")
-        PERMATA_VA = 'permata_va', _("Permata Virtual Account")
-        BNI_VA = 'bni_va', _("BNI Virtual Account")
-        BRI_VA = 'bri_va', _("BRI Virtual Account")
-        ECHANNEL = 'echannel', _("Mandiri Bill")
-        GOPAY = 'gopay', _("GoPay")
-        BCA_KLIKBCA = 'bca_klikbca', _("KlikBCA")
-        BCA_KLIKPAY = 'bca_klikpay', _("BCA KlikPay")
-        CIMB_CLICKS = 'cimb_clicks', _("CIMB Clicks")
-        DANAMON_ONLINE = 'danamon_online', _("Danamon Online Banking")
-        BRI_EPAY = 'bri_epay', _("BRI Epay")
-        INDOMARET = 'indomaret', _("Indomaret")
-        ALFAMART = 'alfamart', _("Alfamart")
-        AKULAKU = 'akulaku', _("Akulaku")
-        SHOPEEPAY = 'shopeepay', _("ShopeePay")
-
-    installment = models.ForeignKey('procure.Installment', related_name='payments',
-                                    on_delete=models.CASCADE)
-    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='payments',
-                                  on_delete=models.SET_NULL, null=True, blank=True)
-
-    due_at = models.DateTimeField()
-    paid_at = models.DateTimeField()
-    amount = models.BigIntegerField()
-    channel = models.CharField(choices=Channel.choices, default=Channel.CASH,
-                               max_length=15)
-    note = models.TextField(null=True, blank=True)
-    is_paid = models.BooleanField(default=False)
-
-    class Meta:
-        abstract = True
-        app_label = 'procure'
-        verbose_name = _("Installment Payment")
-        verbose_name_plural = _("Installment Payments")
-
-    def __str__(self) -> str:
-        return self.installment.borrower.name
-
-
-class AbstractInstallmentLocation(AbstractCommonField):
-    listing = models.OneToOneField('procure.Installment', related_name='location',
-                                   on_delete=models.CASCADE)
+class AbstractLocation(AbstractCommonField):
+    submission = models.OneToOneField('peerland.Submission', related_name='location',
+                                      on_delete=models.CASCADE)
     street_address = models.TextField(help_text=_("Jalan Giri Manuk"))
     street_number = models.CharField(null=True, blank=True, max_length=255)
     route = models.TextField(null=True, blank=True)
@@ -190,9 +186,9 @@ class AbstractInstallmentLocation(AbstractCommonField):
 
     class Meta:
         abstract = True
-        app_label = 'procure'
-        verbose_name = _("Installment Location")
-        verbose_name_plural = _("Installment Locations")
+        app_label = 'peerland'
+        verbose_name = _("Location")
+        verbose_name_plural = _("Locations")
 
     def __str__(self) -> str:
         return self.street_address

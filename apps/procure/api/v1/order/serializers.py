@@ -50,6 +50,7 @@ class CreateOrderSerializer(BaseOrderSerializer):
                   'cost', 'description', 'discount',)
 
     def validate(self, attrs):
+        print(attrs, self.initial_data)
         offer = attrs.get('offer') or self.initial_data.get('offer')
         secret = attrs.get('secret') or self.initial_data.get('secret')
 
@@ -93,8 +94,8 @@ class CreateOrderSerializer(BaseOrderSerializer):
         if created:
             if len(create_order_item) > 0:
                 try:
-                    OrderItem.objects.bulk_create(
-                        create_order_item, ignore_conflicts=False)
+                    OrderItem.objects.bulk_create(create_order_item,
+                                                  ignore_conflicts=False)
                 except IntegrityError:
                     pass
 
@@ -103,6 +104,8 @@ class CreateOrderSerializer(BaseOrderSerializer):
 
 class RetrieveOrderSerializer(BaseOrderSerializer):
     items = _OfferItemRetrieveSerializer(many=True)
+    is_creator = serializers.BooleanField(read_only=True)
+    total_cost = serializers.IntegerField(read_only=True)
 
     class Meta(BaseOrderSerializer.Meta):
         exclude = ('user',)

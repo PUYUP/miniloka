@@ -136,3 +136,19 @@ class AbstractInquiryLocation(AbstractCommonField):
 
     def __str__(self) -> str:
         return '{}, {}'.format(self.latitude, self.longitude)
+
+
+class AbstractInquirySkip(AbstractCommonField):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='skips',
+                             on_delete=models.CASCADE)
+    inquiry = models.ForeignKey('procure.Inquiry', related_name='skips',
+                                on_delete=models.CASCADE)
+
+    class Meta:
+        abstract = True
+        app_label = 'procure'
+        verbose_name = _("Inquiry Skip")
+        verbose_name_plural = _("Inquiry Skips")
+
+    def __str__(self) -> str:
+        return self.inquiry.keyword

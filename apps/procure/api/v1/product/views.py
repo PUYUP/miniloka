@@ -90,7 +90,7 @@ class ProductApiView(viewsets.ViewSet):
 
     @transaction.atomic()
     def delete(self, request, uuid=None):
-        instances = self._instances()
+        instances = self._instances().filter(uuid=self._uuid)
         if instances.exists():
             instances.delete()
             return Response(

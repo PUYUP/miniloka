@@ -4,7 +4,6 @@ from django.utils.translation import ugettext_lazy as _
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 
-from rest_framework import serializers
 from rest_framework.exceptions import NotAcceptable, NotFound
 
 from utils.generals import get_model
@@ -12,12 +11,13 @@ from utils.mixin.api import ExcludeFieldsModelSerializer
 from apps.person.api.validator import MsisdnNumberValidator
 from apps.person.utils.auth import get_users_by_email_or_msisdn
 from apps.person.utils.generator import generate_token_uidb64_with_email, generate_token_uidb64_with_msisdn
+from apps.person import settings as person_settings
 
 User = get_user_model()
 SecureCode = get_model('person', 'SecureCode')
 
-EMAIL_FIELD = settings.USER_EMAIL_FIELD
-MSISDN_FIELD = settings.USER_MSISDN_FIELD
+EMAIL_FIELD = person_settings.EMAIL_FIELD
+MSISDN_FIELD = person_settings.MSISDN_FIELD
 
 
 class BaseSecureCodeSerializer(ExcludeFieldsModelSerializer):

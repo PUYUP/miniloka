@@ -29,3 +29,7 @@ pymemcache>=3.4.2
 django-simple-history>=3.0.0
 django-taggit>=1.4.0
 firebase-admin>=5.0.1
+celery>=5.1.2
+django-cors-headers>=3.7.0
+channels>=3.0.4
+wheel>=0.36.2

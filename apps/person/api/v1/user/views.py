@@ -60,14 +60,11 @@ class UserApiView(viewsets.ViewSet):
         If :email provided :msisdn not required
         If :email NOT provide :msisdn required
 
-        If :group not define will used Customer as default group
-
         {
             "password": "string with special character",
             "username": "string",
             "email": "string email",
             "msisdn": "string number",
-            "group": "string",                             [optional]
             "verification": {
                 "passcode": "123456",
                 "challenge": "email_validation",

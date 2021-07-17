@@ -1,8 +1,10 @@
 import re
 
-from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
 from django.db import transaction
+from django.db.models.functions import Coalesce
+from django.db.models.aggregates import Count, Sum
+from django.db.models.expressions import Exists, OuterRef, Subquery
 from django.utils.translation import gettext_lazy as _
 from django.db.models.functions import ACos, Cos, Sin, Radians
 from django.db.models import Q, F, Value, FloatField
@@ -27,13 +29,18 @@ from .serializers import (
     RetrieveListingLocationSerializer,
     UpdateListingLocationSerializer
 )
-from ..product.serializers import CreateListingProductSerializer, ListListingProductSerializer, ListingProduct, RetrieveListingProductSerializer
+from ..product.serializers import ListListingProductSerializer
+from apps.procure import settings as procure_settings
 
 Listing = get_model('procure', 'Listing')
 ListingMember = get_model('procure', 'ListingMember')
+ListingProduct = get_model('procure', 'ListingProduct')
+Inquiry = get_model('procure', 'Inquiry')
+Notification = get_model('notifier', 'Notification')
 
 # Define to avoid used ...().paginate__
 _PAGINATOR = LimitOffsetPagination()
+DISTANCE_RADIUS = procure_settings.DISTANCE_RADIUS
 
 
 class ListingApiView(viewsets.ViewSet):
@@ -67,7 +74,38 @@ class ListingApiView(viewsets.ViewSet):
         return super().dispatch(request, *args, **kwargs)
 
     def _instances(self):
-        return self._queryset.order_by('-create_at')
+        roles = ['is_admin', 'is_creator', 'is_default',
+                 'is_allow_propose', 'is_allow_offer']
+
+        # Member roles
+        members = ListingMember.objects \
+            .filter(listing_id=OuterRef('id'), user_id=self.request.user.id)
+
+        members_roles = {}
+        for role in roles:
+            members_roles.update(
+                {role: Exists(members.filter(**{role: True}))}
+            )
+
+        # Notification
+        notification = Notification.objects \
+            .filter(
+                target_object_id=OuterRef('id'),
+                recipient_id=self.request.user.id,
+                unread=True
+            ) \
+            .order_by() \
+            .values('target_object_id')
+
+        notification_count = notification.annotate(c=Count('*')).values('c')
+
+        return self._queryset \
+            .annotate(
+                notification_count=Coalesce(
+                    Subquery(notification_count), 0),
+                **members_roles
+            ) \
+            .order_by('-create_at')
 
     def _instances_public(self):
         return self._queryset.order_by('-create_at')
@@ -75,8 +113,10 @@ class ListingApiView(viewsets.ViewSet):
     def _instance(self, is_update=False):
         try:
             if is_update:
+                # Only member admin can update
                 return self._instances().select_for_update() \
-                    .get(uuid=self._uuid, members__is_admin=True)
+                    .get(uuid=self._uuid, members__user_id=self.request.user.id,
+                         members__is_admin=True)
             else:
                 return self._instances().get(uuid=self._uuid)
         except ObjectDoesNotExist:
@@ -89,6 +129,7 @@ class ListingApiView(viewsets.ViewSet):
         latitude = request.query_params.get('latitude', None)
         longitude = request.query_params.get('longitude', None)
         keyword = request.query_params.get('keyword', None)
+        radius = request.query_params.get('radius', DISTANCE_RADIUS)
 
         if visibility == 'public':
             keywords = re.split(r"[^A-Za-z']+", keyword) if keyword else []
@@ -116,7 +157,7 @@ class ListingApiView(viewsets.ViewSet):
                 )
 
                 instances = instances.annotate(distance=calculate_distance) \
-                    .filter(distance__lte=settings.DISTANCE_RADIUS) \
+                    .filter(distance__lte=int(float(radius))) \
                     .order_by('distance')
         else:
             instances = self._instances().filter(members__user_id=self.request.user.id)
@@ -133,7 +174,7 @@ class ListingApiView(viewsets.ViewSet):
                                                context=self._context)
         return Response(serializer.data, status=response_status.HTTP_200_OK)
 
-    @transaction.atomic()
+    @ transaction.atomic()
     def create(self, request, format=None):
         serializer = CreateListingSerializer(data=request.data,
                                              context=self._context)
@@ -151,7 +192,7 @@ class ListingApiView(viewsets.ViewSet):
             return Response(_serializer.data, status=response_status.HTTP_201_CREATED)
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)
 
-    @transaction.atomic()
+    @ transaction.atomic()
     def partial_update(self, request, uuid=None, format=None):
         instance = self._instance(is_update=True)
         serializer = CreateListingSerializer(instance, partial=True, many=False,
@@ -170,10 +211,12 @@ class ListingApiView(viewsets.ViewSet):
             return Response(_serializer.data, status=response_status.HTTP_200_OK)
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)
 
-    @transaction.atomic()
+    @ transaction.atomic()
     def delete(self, request, uuid=None):
+        # Only admin can delete
         instances = self._instances() \
-            .filter(uuid=self._uuid, members__is_admin=True)
+            .filter(uuid=self._uuid, members__user_id=self.request.user.id,
+                    members__is_admin=True)
 
         if instances.exists():
             instances.delete()
@@ -184,8 +227,8 @@ class ListingApiView(viewsets.ViewSet):
         raise NotFound()
 
     # LOCATION
-    @transaction.atomic
-    @action(methods=['patch'], detail=True, url_path='location', url_name='location')
+    @ transaction.atomic
+    @ action(methods=['patch'], detail=True, url_path='location', url_name='location')
     def location(self, request, uuid=None, format=None):
         """
         Format;
@@ -217,8 +260,8 @@ class ListingApiView(viewsets.ViewSet):
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)
 
     # OPENINGS
-    @transaction.atomic
-    @action(methods=['put'], detail=True, url_path='openings', url_name='opening')
+    @ transaction.atomic
+    @ action(methods=['put'], detail=True, url_path='openings', url_name='opening')
     def openings(self, request, uuid=None, format=None):
         """
         PUT
@@ -227,9 +270,12 @@ class ListingApiView(viewsets.ViewSet):
         Format;
 
             [
-                {"day": 1, "open_time": "12:00", "close_time": "17:00", "uuid": "0f50f4fb-9ce5-45ec-a588-0c271a1f32f1"},                    [update]
-                {"day": 2, "open_time": "12:00", "close_time": "17:00", "uuid": "0f50f4fb-9ce5-45ec-a588-0c271a1f32f1", "is_delete": true}, [delete]
-                {"day": 3, "open_time": "14:00", "close_time": "10:00"}                                                                     [create]
+                {"day": 1, "open_time": "12:00", "close_time": "17:00",
+                    "uuid": "0f50f4fb-9ce5-45ec-a588-0c271a1f32f1"},                    [update]
+                {"day": 2, "open_time": "12:00", "close_time": "17:00",
+                    "uuid": "0f50f4fb-9ce5-45ec-a588-0c271a1f32f1", "is_delete": true}, [delete]
+                {"day": 3, "open_time": "14:00",
+                    "close_time": "10:00"}                                                                     [create]
             ]
 
         Rules;
@@ -255,8 +301,8 @@ class ListingApiView(viewsets.ViewSet):
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)
 
     # MEMBERS
-    @transaction.atomic
-    @action(methods=['post'], detail=True, url_path='members', url_name='member')
+    @ transaction.atomic
+    @ action(methods=['post'], detail=True, url_path='members', url_name='member')
     def members(self, request, uuid=None, format=None):
         """
         POST
@@ -286,16 +332,16 @@ class ListingApiView(viewsets.ViewSet):
             return Response(_serializer.data, status=response_status.HTTP_200_OK)
         return Response(serializer.errors, status=response_status.HTTP_400_BAD_REQUEST)
 
-    @transaction.atomic
-    @action(methods=['patch'], detail=True,
-            url_path='members/(?P<member_uuid>[^/.]+)', url_name='member_update')
+    @ transaction.atomic
+    @ action(methods=['patch'], detail=True,
+             url_path='members/(?P<member_uuid>[^/.]+)', url_name='member_update')
     def members_update(self, request, uuid=None, member_uuid=None, format=None):
         pass
 
     # SET LISTING AS DEFAULT FOR CURRENT USER
-    @transaction.atomic
-    @action(methods=['post'], detail=True,
-            url_path='set-default', url_name='set_default')
+    @ transaction.atomic
+    @ action(methods=['post'], detail=True,
+             url_path='set-default', url_name='set_default')
     def set_default(self, request, uuid=None, format=None):
         user_id = request.user.id
 
@@ -310,9 +356,9 @@ class ListingApiView(viewsets.ViewSet):
         return Response({'detail': _("Success")}, status=response_status.HTTP_200_OK)
 
     # LIST PRODUCTS
-    @transaction.atomic
-    @action(methods=['get'], detail=True,
-            url_path='products', url_name='product')
+    @ transaction.atomic
+    @ action(methods=['get'], detail=True,
+             url_path='products', url_name='product')
     def product(self, request, uuid=None, format=None):
         # list products
         if request.method == 'GET':
