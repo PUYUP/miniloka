@@ -6,7 +6,7 @@ import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 from corsheaders.defaults import default_headers
 
-DEBUG = False
+DEBUG = True
 ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
