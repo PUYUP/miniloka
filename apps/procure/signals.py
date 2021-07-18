@@ -117,7 +117,7 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
                     .filter(id__in=recipients_id) \
                     .values_list('id', flat=True)
 
-                context = {
+                notifier_context = {
                     'actor': inquiry.user.id,
                     'recipient': list(recipients_user),
                     'action_object': inquiry.id,
@@ -129,12 +129,13 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
                 }
 
                 if settings.DEBUG:
-                    send_inquiry_notification(context)  # without celery
+                    transaction.on_commit(
+                        lambda: send_inquiry_notification(**notifier_context))  # without celery
                 else:
                     transaction.on_commit(
-                        lambda: send_inquiry_notification.delay(context))  # with celery
+                        lambda: send_inquiry_notification.delay(**notifier_context))  # with celery
 
-            context = {
+            fcm_context = {
                 'fcm_tokens': list(member_fcm_tokens),
                 'inquiry_user': inquiry.user.name,
                 'inquiry_keyword': keyword,
@@ -142,10 +143,11 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
 
             if member_fcm_tokens.exists():
                 if settings.DEBUG:
-                    send_fcm_notification(context)  # without celery
+                    transaction.on_commit(
+                        lambda: send_fcm_notification(**fcm_context))  # without celery
                 else:
                     transaction.on_commit(
-                        lambda: send_fcm_notification.delay(context))  # with celery
+                        lambda: send_fcm_notification.delay(**fcm_context))  # with celery
 
 
 @transaction.atomic()
@@ -187,7 +189,7 @@ def listing_save_handler(sender, instance, created, **kwargs):
 @transaction.atomic()
 def offer_save_handler(sender, instance, created, **kwargs):
     if created:
-        context = {
+        notifier_context = {
             'actor': instance.user.id,
             'recipient': instance.propose.inquiry.user.id,
             'action_object': instance.id,
@@ -206,10 +208,11 @@ def offer_save_handler(sender, instance, created, **kwargs):
             )
 
         if settings.DEBUG:
-            send_offer_notification(context)  # without celery
+            transaction.on_commit(
+                lambda: send_offer_notification(**notifier_context))  # without celery
         else:
             transaction.on_commit(
-                lambda: send_offer_notification.delay(context))  # with celery
+                lambda: send_offer_notification.delay(**notifier_context))  # with celery
 
 
 @transaction.atomic()
@@ -229,7 +232,7 @@ def inquiry_skip_save_handler(sender, instance, created, **kwargs):
 @transaction.atomic()
 def order_save_handler(sender, instance, created, **kwargs):
     if created:
-        context = {
+        notifier_context = {
             'actor': instance.user.id,
             'recipient': instance.offer.user.id,
             'action_object': instance.id,
@@ -241,7 +244,8 @@ def order_save_handler(sender, instance, created, **kwargs):
         }
 
         if settings.DEBUG:
-            send_order_notification(context)  # without celery
+            transaction.on_commit(
+                lambda: send_order_notification(**notifier_context))  # without celery
         else:
             transaction.on_commit(
-                lambda: send_order_notification.delay(context))  # with celery
+                lambda: send_order_notification.delay(**notifier_context))  # with celery

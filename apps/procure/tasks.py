@@ -18,7 +18,7 @@ Order = get_model('procure', 'Order')
 
 
 @shared_task
-def send_fcm_notification(context):
+def send_fcm_notification(**context):
     url = 'https://fcm.googleapis.com/fcm/send'
     headers = {
         'Content-Type': 'application/json',
@@ -36,7 +36,8 @@ def send_fcm_notification(context):
 
 
 @shared_task
-def send_inquiry_notification(context):
+def send_inquiry_notification(**context):
+    print(context, 'XXXXXXXXXXXXX')
     actor = context.pop('actor')
     recipient = context.pop('recipient')
     action_object = context.pop('action_object')
@@ -57,7 +58,7 @@ def send_inquiry_notification(context):
 
 
 @shared_task
-def send_offer_notification(context):
+def send_offer_notification(**context):
     actor = context.pop('actor')
     recipient = context.pop('recipient')
     action_object = context.pop('action_object')
@@ -78,7 +79,7 @@ def send_offer_notification(context):
 
 
 @shared_task
-def send_order_notification(context):
+def send_order_notification(**context):
     actor = context.pop('actor')
     recipient = context.pop('recipient')
     action_object = context.pop('action_object')
