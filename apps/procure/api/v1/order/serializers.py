@@ -50,7 +50,6 @@ class CreateOrderSerializer(BaseOrderSerializer):
                   'cost', 'description', 'discount',)
 
     def validate(self, attrs):
-        print(attrs, self.initial_data)
         offer = attrs.get('offer') or self.initial_data.get('offer')
         secret = attrs.get('secret') or self.initial_data.get('secret')
 

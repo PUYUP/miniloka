@@ -1,4 +1,3 @@
-from apps.person.utils.generator import generate_username
 from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
 from django.utils.translation import gettext_lazy as _
 
@@ -151,9 +150,6 @@ class NotificationApiView(viewsets.ViewSet):
                     & Q(unread=True)
                 )
             )
-
-        x = generate_username('adminx#$@ juid')
-        print(x)
 
         return Response(notification, status=response_status.HTTP_200_OK)
 

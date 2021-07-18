@@ -131,7 +131,8 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
                 if settings.DEBUG:
                     send_inquiry_notification(context)  # without celery
                 else:
-                    send_inquiry_notification.delay(context)  # with celery
+                    transaction.on_commit(
+                        lambda: send_inquiry_notification.delay(context))  # with celery
 
             context = {
                 'fcm_tokens': list(member_fcm_tokens),
@@ -143,7 +144,8 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
                 if settings.DEBUG:
                     send_fcm_notification(context)  # without celery
                 else:
-                    send_fcm_notification.delay(context)  # with celery
+                    transaction.on_commit(
+                        send_fcm_notification.delay(context))  # with celery
 
 
 @transaction.atomic()
@@ -206,7 +208,8 @@ def offer_save_handler(sender, instance, created, **kwargs):
         if settings.DEBUG:
             send_offer_notification(context)  # without celery
         else:
-            send_offer_notification.delay(context)  # with celery
+            transaction.on_commit(
+                send_offer_notification.delay(context))  # with celery
 
 
 @transaction.atomic()
@@ -240,4 +243,5 @@ def order_save_handler(sender, instance, created, **kwargs):
         if settings.DEBUG:
             send_order_notification(context)  # without celery
         else:
-            send_order_notification.delay(context)  # with celery
+            transaction.on_commit(
+                send_order_notification.delay(context))  # with celery
