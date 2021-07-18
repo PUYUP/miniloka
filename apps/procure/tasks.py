@@ -36,16 +36,6 @@ def send_fcm_notification(context):
 
 
 @shared_task
-def send_notification(context):
-    actor = context.pop('actor')
-
-    notify.send(
-        actor,
-        **context
-    )
-
-
-@shared_task
 def send_inquiry_notification(context):
     actor = context.pop('actor')
     recipient = context.pop('recipient')
