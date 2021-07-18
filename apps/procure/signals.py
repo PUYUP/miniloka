@@ -10,9 +10,12 @@ from django.utils.translation import gettext_lazy as _
 
 from utils.generals import get_model
 from apps.procure import settings as procure_settings
-from apps.notifier.signals import notify
-from apps.notifier.tasks import send_notification
-from .tasks import send_inquiry_notification
+from .tasks import (
+    send_fcm_notification,
+    send_inquiry_notification,
+    send_offer_notification,
+    send_order_notification
+)
 
 Listing = get_model('procure', 'Listing')
 ListingLocation = get_model('procure', 'ListingLocation')
@@ -111,13 +114,14 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
                     .values_list('user_id', flat=True)
 
                 recipients_user = UserModel.objects \
-                    .filter(id__in=recipients_id)
+                    .filter(id__in=recipients_id) \
+                    .values_list('id', flat=True)
 
                 context = {
-                    'actor': inquiry.user,
+                    'actor': inquiry.user.id,
                     'recipient': recipients_user,
-                    'action_object': inquiry,
-                    'target': listing_intances,
+                    'action_object': inquiry.id,
+                    'target': listing_ids,
                     'verb': _("mengirim permintaan"),
                     'data': {
                         'obtain': 'inquiry'
@@ -125,9 +129,9 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
                 }
 
                 if settings.DEBUG:
-                    send_notification(context)  # without celery
+                    send_inquiry_notification(context)  # without celery
                 else:
-                    send_notification.delay(context)  # with celery
+                    send_inquiry_notification.delay(context)  # with celery
 
             context = {
                 'fcm_tokens': list(member_fcm_tokens),
@@ -137,9 +141,9 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
 
             if member_fcm_tokens.exists():
                 if settings.DEBUG:
-                    send_inquiry_notification(context)  # without celery
+                    send_fcm_notification(context)  # without celery
                 else:
-                    send_inquiry_notification.delay(context)  # with celery
+                    send_fcm_notification.delay(context)  # with celery
 
 
 @transaction.atomic()
@@ -182,10 +186,10 @@ def listing_save_handler(sender, instance, created, **kwargs):
 def offer_save_handler(sender, instance, created, **kwargs):
     if created:
         context = {
-            'actor': instance.user,
-            'recipient': instance.propose.inquiry.user,
-            'action_object': instance,
-            'target': instance.propose.inquiry,
+            'actor': instance.user.id,
+            'recipient': instance.propose.inquiry.user.id,
+            'action_object': instance.id,
+            'target': instance.propose.inquiry.id,
             'verb': _("memberi penawaran"),
             'data': {
                 'obtain': 'offer'
@@ -200,9 +204,9 @@ def offer_save_handler(sender, instance, created, **kwargs):
             )
 
         if settings.DEBUG:
-            send_notification(context)  # without celery
+            send_offer_notification(context)  # without celery
         else:
-            send_notification.delay(context)  # with celery
+            send_offer_notification.delay(context)  # with celery
 
 
 @transaction.atomic()
@@ -223,10 +227,10 @@ def inquiry_skip_save_handler(sender, instance, created, **kwargs):
 def order_save_handler(sender, instance, created, **kwargs):
     if created:
         context = {
-            'actor': instance.user,
-            'recipient': instance.offer.user,
-            'action_object': instance,
-            'target': instance.offer,
+            'actor': instance.user.id,
+            'recipient': instance.offer.user.id,
+            'action_object': instance.id,
+            'target': instance.offer.id,
             'verb': _("menerima penawaran"),
             'data': {
                 'obtain': 'order'
@@ -234,6 +238,6 @@ def order_save_handler(sender, instance, created, **kwargs):
         }
 
         if settings.DEBUG:
-            send_notification(context)  # without celery
+            send_order_notification(context)  # without celery
         else:
-            send_notification.delay(context)  # with celery
+            send_order_notification.delay(context)  # with celery

@@ -1,7 +1,5 @@
 from django.db import transaction
-from django.conf import settings
 from django.utils.translation import ugettext_lazy as _
-from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 
 from rest_framework.exceptions import NotAcceptable, NotFound
@@ -13,7 +11,6 @@ from apps.person.utils.auth import get_users_by_email_or_msisdn
 from apps.person.utils.generator import generate_token_uidb64_with_email, generate_token_uidb64_with_msisdn
 from apps.person import settings as person_settings
 
-User = get_user_model()
 SecureCode = get_model('person', 'SecureCode')
 
 EMAIL_FIELD = person_settings.EMAIL_FIELD

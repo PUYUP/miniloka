@@ -179,7 +179,10 @@ class InquiryApiView(viewsets.ViewSet):
             try:
                 serializer.save()
             except ValidationError as e:
-                return Response({'detail': _(" ".join(e.messages))}, status=response_status.HTTP_406_NOT_ACCEPTABLE)
+                return Response(
+                    {'detail': _(" ".join(e.messages))},
+                    status=response_status.HTTP_406_NOT_ACCEPTABLE
+                )
 
             _serializer = RetrieveInquirySerializer(serializer.instance,
                                                     context=self._context)
