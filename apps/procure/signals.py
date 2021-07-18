@@ -119,9 +119,9 @@ def inquiry_location_save_handler(sender, instance, created, **kwargs):
 
                 context = {
                     'actor': inquiry.user.id,
-                    'recipient': recipients_user,
+                    'recipient': list(recipients_user),
                     'action_object': inquiry.id,
-                    'target': listing_ids,
+                    'target': list(listing_ids),
                     'verb': _("mengirim permintaan"),
                     'data': {
                         'obtain': 'inquiry'
