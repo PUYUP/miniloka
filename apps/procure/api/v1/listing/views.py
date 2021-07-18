@@ -139,7 +139,7 @@ class ListingApiView(viewsets.ViewSet):
                 keyword_query |= Q(label__icontains=keyword) \
                     | Q(keyword__icontains=keyword)
 
-            instances = self._instances_public().filter(status=Listing.Status.APPROVED)
+            instances = self._instances_public()
             if keyword:
                 instances = instances.filter(keyword_query)
 

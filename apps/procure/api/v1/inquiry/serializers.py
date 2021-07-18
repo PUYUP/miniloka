@@ -108,7 +108,6 @@ class BaseInquirySerializer(serializers.ModelSerializer):
     newest_item_count = serializers.IntegerField(read_only=True)
     newest_item_additional_count = serializers.IntegerField(read_only=True)
     propose_count = serializers.IntegerField(read_only=True)
-    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
     items = InquiryItemSerializer(many=True)
     location = InquiryLocationSerializer()
     distance = serializers.FloatField(required=False)
@@ -178,6 +177,8 @@ class BaseInquirySerializer(serializers.ModelSerializer):
 
 
 class CreateInquirySerializer(BaseInquirySerializer):
+    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
     class Meta(BaseInquirySerializer.Meta):
         fields = ('user', 'items', 'location', 'keyword', 'is_open',)
 
